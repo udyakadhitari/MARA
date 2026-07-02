@@ -1,0 +1,124 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-tertiary: #ffb95f;
+  --color-error: #ffb4ab;
+  --color-secondary-fixed-dim: #4edea3;
+  --color-on-background: #e0e2ed;
+  --color-error-container: #93000a;
+  --color-on-primary-fixed-variant: #004493;
+  --color-secondary-fixed: #6ffbbe;
+  --color-on-surface-variant: #c1c6d7;
+  --color-surface-tint: #adc6ff;
+  --color-on-tertiary: #472a00;
+  --color-surface-container-low: #181c23;
+  --color-primary-fixed: #d8e2ff;
+  --color-on-primary: #002e69;
+  --color-on-tertiary-fixed-variant: #653e00;
+  --color-surface-container-high: #272a32;
+  --color-tertiary-fixed: #ffddb8;
+  --color-on-error: #690005;
+  --color-surface-container: #1c2028;
+  --color-primary: #adc6ff;
+  --color-surface-variant: #31353d;
+  --color-tertiary-fixed-dim: #ffb95f;
+  --color-primary-fixed-dim: #adc6ff;
+  --color-on-secondary: #003824;
+  --color-surface-bright: #363942;
+  --color-tertiary-container: #ca8100;
+  --color-surface-container-lowest: #0b0e16;
+  --color-on-tertiary-container: #3e2400;
+  --color-inverse-on-surface: #2d3039;
+  --color-surface-dim: #10131b;
+  --color-on-surface: #e0e2ed;
+  --color-inverse-primary: #005bc1;
+  --color-on-error-container: #ffdad6;
+  --color-background: #10131b;
+  --color-outline-variant: #414755;
+  --color-on-secondary-container: #00311f;
+  --color-inverse-surface: #e0e2ed;
+  --color-on-secondary-fixed-variant: #005236;
+  --color-on-secondary-fixed: #002113;
+  --color-on-tertiary-fixed: #2a1700;
+  --color-secondary: #4edea3;
+  --color-on-primary-fixed: #001a41;
+  --color-secondary-container: #00a572;
+  --color-surface-container-highest: #31353d;
+  --color-primary-container: #4b8eff;
+  --color-on-primary-container: #00285c;
+  --color-outline: #8b90a0;
+  --color-surface: #10131b;
+
+  --radius-DEFAULT: 0.125rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.5rem;
+  --radius-full: 0.75rem;
+
+  --spacing-sidebar-width: 320px;
+  --spacing-stack-gap-sm: 8px;
+  --spacing-unit: 4px;
+  --spacing-gutter: 16px;
+  --spacing-container-padding: 24px;
+  --spacing-stack-gap-md: 16px;
+
+  --font-headline-md: "Inter", sans-serif;
+  --font-code-md: "JetBrains Mono", monospace;
+  --font-headline-lg: "Inter", sans-serif;
+  --font-body-lg: "Inter", sans-serif;
+  --font-body-md: "Inter", sans-serif;
+  --font-headline-sm: "Inter", sans-serif;
+  --font-label-caps: "Inter", sans-serif;
+}
+
+/* Custom scrollbars, glass effects, animations */
+.glass-panel {
+    background: rgba(22, 27, 34, 0.4);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.03);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+.pulse-border {
+    animation: pulse-border 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-border {
+    0%, 100% { border-color: rgba(75, 142, 255, 0.5); box-shadow: 0 0 8px rgba(75, 142, 255, 0.2); }
+    50% { border-color: rgba(75, 142, 255, 1); box-shadow: 0 0 16px rgba(75, 142, 255, 0.4); }
+}
+
+.typing-cursor::after {
+    content: '▋';
+    animation: blink 1s step-end infinite;
+    color: #4b8eff;
+    margin-left: 4px;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+/* Custom Scrollbar for dark theme */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #31353d;
+    border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #414755;
+}
+
+/* Base override to ensure correct background and font */
+body {
+    background-color: #10131b;
+    font-family: 'Inter', sans-serif;
+}

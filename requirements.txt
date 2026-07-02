@@ -1,0 +1,41 @@
+# Core LangChain
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-openai>=0.3.0
+langchain-community>=0.3.0
+langgraph>=0.3.0
+
+# Search Tool
+tavily-python
+
+# Web Scraping
+beautifulsoup4
+requests
+lxml
+
+# Environment Variables
+python-dotenv
+
+# Tokenizer
+tiktoken
+
+# Validation
+pydantic
+
+# Logging / Utilities
+rich
+
+# Async HTTP
+httpx
+
+# Parsing
+html5lib
+
+# Optional Retry Support
+tenacity
+
+# Optional Data Handling
+pandas
+
+# OpenAI SDK
+openai

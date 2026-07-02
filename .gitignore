@@ -1,0 +1,42 @@
+# Environment variables (MUST NOT BE COMMITTED)
+.env
+.env.local
+.env.*
+!.env.example
+
+# Python virtual environment
+.venv/
+env/
+venv/
+ENV/
+
+# Python cache / compile files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# Node.js
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+
+# Logs & temp files
+*.log
+logs/
+backend/traces/
+backend/app/traces/
+C:\Users\udyak\.gemini\antigravity-ide\
+
+# IDE files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
