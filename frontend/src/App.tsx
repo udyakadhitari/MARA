@@ -429,28 +429,28 @@ function App() {
       const loadInitialSessions = async () => {
         const sessions = await fetchSessions();
         const storedSession = localStorage.getItem('mara_session_id');
-        const sessionExists = sessions && sessions.some((s: any) => s.session_id === storedSession);
         
-        if (storedSession && sessionExists) {
-          setSessionId(storedSession);
-          loadSessionMessages(storedSession);
-        } else if (sessions && sessions.length > 0) {
-          const latestSessionId = sessions[0].session_id;
-          setSessionId(latestSessionId);
-          localStorage.setItem('mara_session_id', latestSessionId);
-          loadSessionMessages(latestSessionId);
-        } else {
-          // No sessions or deleted session, clear workspace
-          setChatHistory([]);
-          setSessionId('');
-          localStorage.removeItem('mara_session_id');
+        if (storedSession && storedSession !== 'new') {
+          const sessionExists = sessions && sessions.some((s: any) => s.session_id === storedSession);
+          if (sessionExists) {
+            setSessionId(storedSession);
+            loadSessionMessages(storedSession);
+            return;
+          }
         }
+        
+        // Default to New Chat landing view if storedSession is 'new', empty, or not found
+        setSessionId('');
+        setActiveQuery(null);
+        setChatHistory([]);
+        setStreamingText('');
+        setSources([]);
+        setFollowUps([]);
+        setIsLoading(false);
       };
       loadInitialSessions();
     }
   }, [isLoaded, isSignedIn, clerkUserId]);
-
-// (Removed unused fetchHistory)
 
   const fetchSettings = async () => {
     try {
@@ -481,7 +481,7 @@ function App() {
     setIsLoading(false);
     setSessionId('');
     setChatHistory([]);
-    localStorage.removeItem('mara_session_id');
+    localStorage.setItem('mara_session_id', 'new');
     fetchSessions(3, false);
   };
 
@@ -529,6 +529,7 @@ function App() {
       setActiveTaskId(taskId);
       setFollowUps([]);
       setSessionId(returnedSessionId);
+      localStorage.setItem('mara_session_id', returnedSessionId);
 
       // Update sessions list immediately without showing skeleton loader
       fetchSessions(5, false);
@@ -832,7 +833,7 @@ function App() {
 
 
         {/* Right Stepper Panel */}
-        {activeTab === 'workspace' && activeQuery && (
+        {activeTab === 'workspace' && (
           <AgentTracePanel
             steps={traceSteps}
             isOpen={isTraceOpen}

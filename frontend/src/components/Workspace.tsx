@@ -429,9 +429,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                 <button
                   type="submit"
                   disabled={!inputValue.trim()}
-                  className="bg-primary text-white dark:text-slate-950 w-10 h-10 rounded-full flex items-center justify-center hover:opacity-90 transition-all disabled:opacity-50 shadow-md active:scale-95 cursor-pointer"
+                  className="bg-primary text-on-primary w-10 h-10 rounded-full flex items-center justify-center hover:opacity-90 transition-all disabled:opacity-50 shadow-md active:scale-95 cursor-pointer"
                 >
-                  <ArrowUp className="w-5 h-5 font-extrabold text-white dark:text-slate-950" />
+                  <ArrowUp className="w-5 h-5 font-extrabold text-white dark:text-black" />
                 </button>
               </div>
             </form>
@@ -857,12 +857,12 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                   <button
                     type="submit"
                     disabled={!inputValue.trim() || isLoading}
-                    className="bg-primary text-white dark:text-slate-950 w-10 h-10 rounded-full flex items-center justify-center hover:opacity-90 transition-all disabled:opacity-50 shadow-md active:scale-95 cursor-pointer"
+                    className="bg-primary text-on-primary w-10 h-10 rounded-full flex items-center justify-center hover:opacity-90 transition-all disabled:opacity-50 shadow-md active:scale-95 cursor-pointer"
                   >
                     {isLoading ? (
-                      <Loader2 className="w-5 h-5 animate-spin text-white dark:text-slate-950" />
+                      <Loader2 className="w-5 h-5 animate-spin text-white dark:text-black" />
                     ) : (
-                      <ArrowUp className="w-5 h-5 font-extrabold text-white dark:text-slate-950" />
+                      <ArrowUp className="w-5 h-5 font-extrabold text-white dark:text-black" />
                     )}
                   </button>
                 </div>

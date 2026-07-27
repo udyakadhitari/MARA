@@ -54,50 +54,39 @@ export const AgentTracePanel: React.FC<AgentTracePanelProps> = ({
       {/* Stepper Content */}
       <div className="flex-grow overflow-y-auto p-6 pt-2">
         <div className="relative space-y-8">
-          {steps.map((step, index) => {
+          {/* Continuous Theme Blue Connecting Line running behind nodes */}
+          <div className="absolute left-[13px] top-3 bottom-3 w-0.5 bg-blue-600 dark:bg-blue-400/80 pointer-events-none z-0" />
+
+          {steps.map((step) => {
             const isCompleted = step.status === 'completed';
             const isRunning = step.status === 'running';
             const isFailed = step.status === 'failed';
             const isPending = step.status === 'pending';
             const isExpanded = expandedStepId === step.id;
-            const isLast = index === steps.length - 1;
 
             return (
               <div key={step.id} className="relative flex items-start group">
-                {/* Connecting Line Segment to Next Node (Starts at bottom of current node, ends at top of next node) */}
-                {!isLast && (
-                  <div 
-                    className={`absolute left-[13px] top-7 bottom-[-32px] w-0.5 pointer-events-none ${
-                      isCompleted 
-                        ? 'bg-gradient-to-b from-emerald-500 to-blue-600' 
-                        : isRunning 
-                        ? 'bg-gradient-to-b from-blue-600 to-slate-400 dark:to-white/20' 
-                        : 'bg-slate-400 dark:bg-white/20'
-                    }`} 
-                  />
-                )}
-
                 {/* Stepper Icon Node */}
-                <div className={`flex items-center justify-center w-7 h-7 rounded-full absolute left-0 top-0 shadow-sm z-10 border ${
+                <div className={`flex items-center justify-center w-7 h-7 rounded-full absolute left-0 top-0 shadow-sm z-10 border bg-white dark:bg-surface-container ${
                   isCompleted 
-                    ? 'bg-surface-container border-secondary text-secondary' 
+                    ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' 
                     : isRunning 
-                    ? 'bg-surface-container border-primary text-primary shadow-[0_0_12px_rgba(75,142,255,0.3)]'
+                    ? 'border-blue-600 text-blue-600 dark:text-primary shadow-[0_0_12px_rgba(75,142,255,0.3)]'
                     : isFailed 
-                    ? 'bg-surface-container border-error text-error' 
-                    : 'bg-surface-container border-slate-400 dark:border-white/20 text-on-surface-variant'
+                    ? 'border-red-500 text-red-500' 
+                    : 'border-slate-300 dark:border-white/20 text-slate-700 dark:text-slate-300'
                 }`}>
                   {isCompleted && (
-                    <Check className="w-4 h-4" />
+                    <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 font-bold" />
                   )}
                   {isRunning && (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin text-blue-600 dark:text-primary" />
                   )}
                   {isFailed && (
-                    <AlertCircle className="w-4 h-4 text-error" />
+                    <AlertCircle className="w-4 h-4 text-red-500" />
                   )}
                   {isPending && (
-                    <span className="block w-2 h-2 bg-slate-500 dark:bg-white/50 rounded-full"></span>
+                    <span className="block w-2.5 h-2.5 bg-slate-700 dark:bg-slate-300 rounded-full"></span>
                   )}
                 </div>
 
