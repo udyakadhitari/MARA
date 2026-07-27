@@ -429,9 +429,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                 <button
                   type="submit"
                   disabled={!inputValue.trim()}
-                  className="bg-primary text-on-primary w-10 h-10 rounded-full flex items-center justify-center hover:bg-primary-fixed transition-all disabled:opacity-50 disabled:hover:bg-primary shadow-md active:scale-95 cursor-pointer"
+                  className="bg-primary text-slate-950 w-10 h-10 rounded-full flex items-center justify-center hover:opacity-90 transition-all disabled:opacity-50 shadow-md active:scale-95 cursor-pointer"
                 >
-                  <ArrowUp className="w-5 h-5 font-bold" />
+                  <ArrowUp className="w-5 h-5 font-extrabold text-slate-950" />
                 </button>
               </div>
             </form>
@@ -857,12 +857,12 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                   <button
                     type="submit"
                     disabled={!inputValue.trim() || isLoading}
-                    className="bg-primary text-on-primary w-10 h-10 rounded-full flex items-center justify-center hover:bg-primary-fixed transition-all disabled:opacity-50 disabled:hover:bg-primary shadow-md active:scale-95"
+                    className="bg-primary text-slate-950 w-10 h-10 rounded-full flex items-center justify-center hover:opacity-90 transition-all disabled:opacity-50 shadow-md active:scale-95 cursor-pointer"
                   >
                     {isLoading ? (
-                      <span className="material-symbols-outlined text-[20px] animate-spin">sync</span>
+                      <Loader2 className="w-5 h-5 animate-spin text-slate-950" />
                     ) : (
-                      <span className="material-symbols-outlined text-[20px]">arrow_upward</span>
+                      <ArrowUp className="w-5 h-5 font-extrabold text-slate-950" />
                     )}
                   </button>
                 </div>
@@ -918,9 +918,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                   setIsProfileOpen(false);
                   signOut();
                 }}
-                className="w-full py-3 px-4 rounded-xl bg-error-container/10 hover:bg-error-container/20 text-error font-semibold text-sm transition-all flex items-center justify-center gap-2 active:scale-[0.99] border border-error/20 cursor-pointer"
+                className="w-full py-3 px-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-semibold text-sm transition-all flex items-center justify-center gap-2 active:scale-[0.99] border border-red-500/30 cursor-pointer shadow-sm"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-4 h-4 text-red-600 dark:text-red-400" />
                 <span>Sign Out</span>
               </button>
             </div>

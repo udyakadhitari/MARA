@@ -69,10 +69,10 @@ export const AgentTracePanel: React.FC<AgentTracePanelProps> = ({
                   <div 
                     className={`absolute left-[13px] top-7 bottom-[-32px] w-0.5 pointer-events-none ${
                       isCompleted 
-                        ? 'bg-gradient-to-b from-secondary/80 to-primary/60' 
+                        ? 'bg-gradient-to-b from-emerald-500 to-blue-500' 
                         : isRunning 
-                        ? 'bg-gradient-to-b from-primary/80 to-white/10' 
-                        : 'bg-white/10'
+                        ? 'bg-gradient-to-b from-blue-500 to-slate-400 dark:to-white/20' 
+                        : 'bg-slate-300 dark:bg-white/15'
                     }`} 
                   />
                 )}
