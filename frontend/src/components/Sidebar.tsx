@@ -1,122 +1,261 @@
-import React from 'react';
-import { UserButton, useUser } from '@clerk/clerk-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { SquarePlus, LayoutGrid, PanelLeftClose, PanelLeft, Pin, MessageSquare, MoreVertical, Edit3, Trash2 } from 'lucide-react';
+import emblemImg from '../assets/emblem_clean.png';
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onNewResearch: () => void;
+  sessionsList: any[];
+  currentSessionId: string;
+  onSelectSession: (sid: string) => void;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
+  sidebarWidth: number;
+  onResizeStart: (e: React.MouseEvent) => void;
+  isResizing?: boolean;
+  isHistoryLoading?: boolean;
+  pinnedSessions: string[];
+  onPinSession: (sid: string) => void;
+  onRenameSession: (sid: string) => void;
+  onDeleteSession: (sid: string) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
-  onNewResearch
+  onNewResearch,
+  sessionsList,
+  currentSessionId,
+  onSelectSession,
+  isCollapsed,
+  onToggleCollapse,
+  sidebarWidth,
+  onResizeStart,
+  isResizing = false,
+  isHistoryLoading = false,
+  pinnedSessions,
+  onPinSession,
+  onRenameSession,
+  onDeleteSession
 }) => {
+  const [activeMenuSessionId, setActiveMenuSessionId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ x: number, y: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (activeMenuSessionId && menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setActiveMenuSessionId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [activeMenuSessionId]);
+
+  const handleOpenMenu = (e: React.MouseEvent, sid: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMenuPosition({ x: rect.left, y: rect.bottom + window.scrollY });
+    setActiveMenuSessionId(sid);
+  };
+
+  // Sort sessions list: pinned first, then by date descending
+  const sortedSessions = [...sessionsList].sort((a, b) => {
+    const aPinned = pinnedSessions.includes(a.session_id);
+    const bPinned = pinnedSessions.includes(b.session_id);
+    if (aPinned && !bPinned) return -1;
+    if (!aPinned && bPinned) return 1;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
   return (
-    <nav className="bg-surface-dim/80 backdrop-blur-xl w-sidebar-width h-screen fixed left-0 top-0 border-r border-white/5 flex flex-col p-gutter z-50">
+    <nav 
+      className={`bg-surface-dim/95 backdrop-blur-xl h-screen fixed left-0 top-0 border-r border-white/5 flex flex-col z-50 ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
+      style={{ width: isCollapsed ? 72 : sidebarWidth, padding: isCollapsed ? '8px' : '16px' }}
+    >
+      {/* Drag Resize Handle (only active when expanded) */}
+      {!isCollapsed && (
+        <div 
+          onMouseDown={onResizeStart}
+          className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/50 transition-colors select-none z-50"
+          title="Drag to resize sidebar"
+        />
+      )}
+
       {/* Header / Branding */}
-      <div className="mb-10 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center font-bold shadow-sm">
-          <span className="material-symbols-outlined text-primary text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-            biotech
-          </span>
+      <div className={`flex items-center justify-between mb-8 ${isCollapsed ? 'flex-col gap-4' : ''}`}>
+        <div className="flex items-center gap-3 overflow-hidden min-w-0 h-8">
+          <img
+            src={emblemImg}
+            alt="MARA Emblem"
+            className="w-8 h-8 flex-shrink-0 object-contain"
+          />
+          {!isCollapsed && (
+            <div className="animate-fadeIn min-w-0 flex items-center h-8">
+              <h1 className="font-headline-sm text-xl font-extrabold text-primary truncate tracking-widest leading-none my-auto">MARA</h1>
+            </div>
+          )}
         </div>
-        <div>
-          <h1 className="font-headline-sm text-headline-sm font-bold text-primary">Research Lab</h1>
-          <p className="font-label-caps text-[10px] text-on-surface-variant uppercase mt-0.5 tracking-wider">
-            Multi-Agent Orchestrator
-          </p>
-        </div>
+        <button
+          onClick={onToggleCollapse}
+          className="p-2 hover:bg-surface-variant/30 rounded-xl text-on-surface-variant hover:text-on-surface transition-all active:scale-95 flex-shrink-0 cursor-pointer"
+          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+        >
+          {isCollapsed ? <PanelLeft className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+        </button>
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex flex-col gap-2 flex-grow">
+      <div className="flex flex-col gap-2">
         {/* New Research CTA */}
         <button
           onClick={onNewResearch}
-          className="flex items-center gap-3 p-3.5 text-on-surface bg-surface-variant/20 hover:bg-surface-variant/40 active:scale-[0.98] rounded-2xl cursor-pointer transition-all mb-4 text-left font-semibold border border-white/5"
+          className={`flex items-center gap-3 text-on-surface bg-surface-variant/20 hover:bg-surface-variant/40 active:scale-[0.98] rounded-2xl cursor-pointer transition-all mb-4 text-left font-semibold border border-white/5 ${
+            isCollapsed ? 'p-3 justify-center' : 'p-3.5'
+          }`}
+          title="New Research"
         >
-          <span className="material-symbols-outlined text-[20px] text-primary">edit_square</span>
-          <span>New Research</span>
+          <SquarePlus className="w-5 h-5 text-primary flex-shrink-0" />
+          {!isCollapsed && <span className="animate-fadeIn truncate">New Research</span>}
         </button>
 
         {/* Tab Items */}
         <button
           onClick={() => setActiveTab('workspace')}
-          className={`flex items-center gap-3 p-3 rounded-2xl transition-all text-left font-medium active:scale-[0.98] ${
+          className={`flex items-center gap-3 p-3 rounded-2xl transition-all text-left font-medium active:scale-[0.98] cursor-pointer ${
             activeTab === 'workspace'
               ? 'text-primary bg-primary-container/20 border border-primary/10 shadow-[0_0_12px_rgba(75,142,255,0.05)]'
               : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30'
-          }`}
+          } ${isCollapsed ? 'justify-center' : ''}`}
+          title="Workspace"
         >
-          <span className="material-symbols-outlined text-[20px]">biotech</span>
-          <span>Workspace</span>
+          <LayoutGrid className="w-5 h-5 flex-shrink-0" />
+          {!isCollapsed && <span className="animate-fadeIn truncate">Workspace</span>}
         </button>
-
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`flex items-center gap-3 p-3 rounded-2xl transition-all text-left font-medium active:scale-[0.98] ${
-            activeTab === 'history'
-              ? 'text-primary bg-primary-container/20 border border-primary/10 shadow-[0_0_12px_rgba(75,142,255,0.05)]'
-              : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30'
-          }`}
-        >
-          <span className="material-symbols-outlined text-[20px]">history</span>
-          <span>History</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('library')}
-          className={`flex items-center gap-3 p-3 rounded-2xl transition-all text-left font-medium active:scale-[0.98] ${
-            activeTab === 'library'
-              ? 'text-primary bg-primary-container/20 border border-primary/10 shadow-[0_0_12px_rgba(75,142,255,0.05)]'
-              : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30'
-          }`}
-        >
-          <span className="material-symbols-outlined text-[20px]">book</span>
-          <span>Library</span>
-        </button>
-
-        {/* Settings Tab (Pinned to bottom) */}
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`flex items-center gap-3 p-3 rounded-2xl transition-all text-left font-medium active:scale-[0.98] mt-auto ${
-            activeTab === 'settings'
-              ? 'text-primary bg-primary-container/20 border border-primary/10 shadow-[0_0_12px_rgba(75,142,255,0.05)]'
-              : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30'
-          }`}
-        >
-          <span className="material-symbols-outlined text-[20px]">settings</span>
-          <span>Settings</span>
-        </button>
-
-        {/* User Account - Clerk UserButton */}
-        <UserAccountFooter />
       </div>
+
+      {/* Separating Line */}
+      <hr className="border-white/5 my-6" />
+
+      {/* History Chat Thread Section */}
+      <div className="flex-grow flex flex-col min-h-0">
+        {!isCollapsed && (
+          <span className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest px-3 mb-3 block animate-fadeIn">
+            Research History
+          </span>
+        )}
+        <div className="flex-grow overflow-y-auto hide-scrollbar space-y-2 pr-1">
+          {isHistoryLoading && sortedSessions.length === 0 ? (
+            !isCollapsed && (
+              <div className="space-y-2.5 animate-pulse px-2.5">
+                {[1, 2, 3, 4].map((n) => (
+                  <div key={n} className="h-10 bg-white/5 rounded-xl w-full" />
+                ))}
+              </div>
+            )
+          ) : sortedSessions.length === 0 ? (
+            !isCollapsed && (
+              <div className="text-[11px] text-on-surface-variant/40 text-center py-4 border border-dashed border-white/5 rounded-xl animate-fadeIn">
+                No past sessions.
+              </div>
+            )
+          ) : (
+            sortedSessions.map(session => {
+              const isSelected = currentSessionId === session.session_id;
+              const isPinned = pinnedSessions.includes(session.session_id);
+              return (
+                <div key={session.session_id} className="relative group w-full flex items-center">
+                  <button
+                    onClick={() => onSelectSession(session.session_id)}
+                    className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all text-left cursor-pointer active:scale-[0.99] border border-solid ${
+                      isCollapsed ? 'justify-center' : 'pr-10'
+                    } ${
+                      isSelected
+                        ? 'bg-primary/10 border-primary/20 text-primary'
+                        : 'bg-transparent border-transparent hover:bg-surface-variant/20 text-on-surface-variant hover:text-on-surface'
+                    }`}
+                    title={session.running_summary || `Session (${session.session_id.substring(0, 8)})`}
+                  >
+                    {isPinned ? (
+                      <Pin className="w-4 h-4 text-primary flex-shrink-0" />
+                    ) : (
+                      <MessageSquare className="w-4 h-4 flex-shrink-0 opacity-70" />
+                    )}
+                    {!isCollapsed && (
+                      <div className="min-w-0 flex-grow animate-fadeIn">
+                        <p className="text-xs font-semibold truncate leading-tight">
+                          {session.running_summary || `Session (${session.session_id.substring(0, 8)})`}
+                        </p>
+                        <p className="text-[9px] text-on-surface-variant/60 truncate mt-0.5 font-code-md">
+                          {new Date(session.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
+                  </button>
+
+                  {!isCollapsed && (
+                    <div className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
+                      <button
+                        onClick={(e) => handleOpenMenu(e, session.session_id)}
+                        className="p-1 hover:bg-white/10 rounded text-on-surface-variant hover:text-on-surface transition-all cursor-pointer"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* 3-Dot Context Menu */}
+      {activeMenuSessionId && menuPosition && (
+        <div 
+          ref={menuRef}
+          className="fixed bg-surface-container rounded-xl border border-white/10 shadow-2xl p-1.5 z-[100] min-w-[120px] animate-fadeIn flex flex-col gap-0.5"
+          style={{ left: `${menuPosition.x}px`, top: `${menuPosition.y}px` }}
+        >
+          <button
+            onClick={() => {
+              onPinSession(activeMenuSessionId);
+              setActiveMenuSessionId(null);
+            }}
+            className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 text-xs font-semibold text-on-surface flex items-center gap-2 cursor-pointer"
+          >
+            <Pin className="w-3.5 h-3.5 text-primary" />
+            <span>{pinnedSessions.includes(activeMenuSessionId) ? 'Unpin' : 'Pin'}</span>
+          </button>
+          
+          <button
+            onClick={() => {
+              onRenameSession(activeMenuSessionId);
+              setActiveMenuSessionId(null);
+            }}
+            className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 text-xs font-semibold text-on-surface flex items-center gap-2 cursor-pointer"
+          >
+            <Edit3 className="w-3.5 h-3.5 text-on-surface-variant" />
+            <span>Rename</span>
+          </button>
+          
+          <hr className="border-white/5 my-1" />
+          
+          <button
+            onClick={() => {
+              onDeleteSession(activeMenuSessionId);
+              setActiveMenuSessionId(null);
+            }}
+            className="w-full text-left px-3 py-2 rounded-lg hover:bg-error/15 hover:text-error text-xs font-semibold text-on-surface-variant flex items-center gap-2 cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-error" />
+            <span>Delete</span>
+          </button>
+        </div>
+      )}
     </nav>
-  );
-};
-
-const UserAccountFooter: React.FC = () => {
-  const { user } = useUser();
-  return (
-    <div className="flex items-center gap-3 p-3 mt-3 rounded-2xl bg-surface-variant/20 border border-white/5">
-      <UserButton
-        appearance={{
-          elements: {
-            avatarBox: 'w-8 h-8 ring-2 ring-primary/30',
-          }
-        }}
-      />
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-on-surface truncate">
-          {user?.firstName || user?.username || 'Researcher'}
-        </p>
-        <p className="text-[10px] text-on-surface-variant truncate">
-          {user?.primaryEmailAddress?.emailAddress || ''}
-        </p>
-      </div>
-    </div>
   );
 };
 

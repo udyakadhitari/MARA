@@ -116,6 +116,13 @@ class SettingsUpdate(BaseModel):
     temperature: float
     search_depth: str
 
+class FollowUpsRequest(BaseModel):
+    query: str
+    answer: str
+
+class SessionUpdate(BaseModel):
+    running_summary: str
+
 # =====================================================================
 # API Endpoints
 # =====================================================================
@@ -251,14 +258,9 @@ async def stream_research(task_id: str):
                         yield f"event: synthesizer-token-stream\ndata: {json.dumps({'done': True, 'claims': claims, 'confidence': confidence, 'follow_ups': follow_ups})}\n\n"
                         
                     elif node_name == "fallback":
-                        draft_answer = state_update.get("draft_answer", "")
-                        words = draft_answer.split(" ")
-                        chunk_size = 5
-                        for i in range(0, len(words), chunk_size):
-                            chunk = " ".join(words[i:i+chunk_size]) + " "
-                            yield f"event: synthesizer-token-stream\ndata: {json.dumps({'chunk': chunk, 'done': False})}\n\n"
-                            await asyncio.sleep(0.05)
-                        yield f"event: synthesizer-token-stream\ndata: {json.dumps({'done': True, 'claims': [], 'confidence': 0.0})}\n\n"
+                        # Fallback node just updates the state, synthesizer node will stream it.
+                        pass
+
 
             # Write final trace file for observability
             trace_dir = os.path.join(ROOT_DIR, "backend", "traces")
@@ -347,54 +349,102 @@ async def get_run_trace(task_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to load trace: {str(e)}")
 
 @app.get("/api/sessions")
-async def get_sessions(user_id: Optional[str] = Depends(get_current_user_optional)):
+async def get_sessions(user_id: str = Depends(get_current_user)):
     try:
         from backend.app.agents.db import get_db_connection
         conn = get_db_connection()
         cur = conn.cursor()
-        if user_id and user_id != "anonymous":
+        try:
             cur.execute(
-                "select session_id, created_at, running_summary from sessions "
-                "where user_id = %s order by created_at desc",
+                "select s.session_id, s.created_at, s.running_summary, "
+                "(select m.query_text from messages m where m.session_id = s.session_id order by m.turn_index asc limit 1) as first_query "
+                "from sessions s where s.user_id = %s or s.user_id = 'anonymous' order by s.created_at desc",
                 (user_id,)
             )
-        else:
-            # Fallback: return nothing for unauthenticated calls
-            return []
+        except Exception:
+            conn.rollback()
+            cur.execute(
+                "select s.session_id, s.running_summary, "
+                "(select m.query_text from messages m where m.session_id = s.session_id order by m.turn_index asc limit 1) as first_query "
+                "from sessions s where s.user_id = %s or s.user_id = 'anonymous'",
+                (user_id,)
+            )
         rows = cur.fetchall()
         cur.close()
         conn.close()
-        return [
-            {
+        
+        sessions_output = []
+        for r in rows:
+            summary = r["running_summary"]
+            if not summary:
+                first_query = r["first_query"]
+                if first_query:
+                    words = first_query.strip().split()
+                    if len(words) > 6:
+                        summary = " ".join(words[:6]) + "..."
+                    else:
+                        summary = " ".join(words)
+                else:
+                    summary = f"Research ({str(r['session_id'])[:8]})"
+            
+            created_val = r.get("created_at")
+            if created_val and hasattr(created_val, "isoformat"):
+                created_str = created_val.isoformat()
+            elif created_val:
+                created_str = str(created_val)
+            else:
+                created_str = datetime.datetime.now().isoformat()
+
+            sessions_output.append({
                 "session_id": str(r["session_id"]),
-                "created_at": r["created_at"].isoformat(),
-                "running_summary": r["running_summary"]
-            }
-            for r in rows
-        ]
+                "created_at": created_str,
+                "running_summary": summary
+            })
+            
+        return sessions_output
     except Exception as e:
         print(f"Error fetching sessions: {e}")
         return []
 
+def _safe_parse_sources(val):
+    if not val:
+        return []
+    if isinstance(val, list):
+        return val
+    if isinstance(val, str):
+        try:
+            return json.loads(val)
+        except Exception:
+            return []
+    return []
+
 @app.get("/api/sessions/{session_id}/messages")
 async def get_session_messages(
     session_id: str,
-    user_id: Optional[str] = Depends(get_current_user_optional)
+    user_id: str = Depends(get_current_user)
 ):
     try:
         from backend.app.agents.db import get_db_connection
         conn = get_db_connection()
         cur = conn.cursor()
-        # Verify the session belongs to this user
-        if user_id and user_id != "anonymous":
-            cur.execute(
-                "select 1 from sessions where session_id = %s and user_id = %s",
-                (session_id, user_id)
-            )
-            if not cur.fetchone():
-                raise HTTPException(status_code=403, detail="Session does not belong to this user")
+        # Verify the session belongs to this user or anonymous
         cur.execute(
-            "select query_text, answer_text, source_urls, created_at from messages "
+            "select user_id from sessions where session_id = %s",
+            (session_id,)
+        )
+        owner_row = cur.fetchone()
+        if not owner_row:
+            cur.close()
+            conn.close()
+            return []
+        owner = owner_row.get("user_id")
+        if owner != "anonymous" and owner != user_id:
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=403, detail="Session does not belong to this user")
+
+        cur.execute(
+            "select query_text, answer_text, source_urls from messages "
             "where session_id = %s "
             "order by turn_index asc",
             (session_id,)
@@ -404,14 +454,120 @@ async def get_session_messages(
         conn.close()
         return [
             {
-                "query": r["query_text"],
-                "answer": r["answer_text"],
-                "sources": r["source_urls"] if r["source_urls"] else [],
-                "created_at": r["created_at"].isoformat()
+                "query": r.get("query_text", ""),
+                "answer": r.get("answer_text", ""),
+                "sources": _safe_parse_sources(r.get("source_urls")),
+                "created_at": ""
             }
             for r in rows
         ]
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch session messages: {str(e)}")
+        print(f"[500 ERROR get_session_messages] {e}")
+        return []
+
+@app.delete("/api/sessions/{session_id}")
+async def delete_session(
+    session_id: str,
+    user_id: Optional[str] = Depends(get_current_user_optional)
+):
+    try:
+        from backend.app.agents.db import get_db_connection
+        conn = get_db_connection()
+        cur = conn.cursor()
+        if user_id and user_id != "anonymous":
+            # Verify ownership
+            cur.execute(
+                "select 1 from sessions where session_id = %s and user_id = %s",
+                (session_id, user_id)
+            )
+            if not cur.fetchone():
+                cur.close()
+                conn.close()
+                raise HTTPException(status_code=403, detail="Session does not belong to this user")
+        
+        # Delete messages and then the session
+        cur.execute("delete from messages where session_id = %s", (session_id,))
+        cur.execute("delete from sessions where session_id = %s", (session_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "SUCCESS", "message": "Session deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete session: {str(e)}")
+
+@app.put("/api/sessions/{session_id}")
+async def update_session(
+    session_id: str,
+    update: SessionUpdate,
+    user_id: Optional[str] = Depends(get_current_user_optional)
+):
+    try:
+        from backend.app.agents.db import get_db_connection
+        conn = get_db_connection()
+        cur = conn.cursor()
+        if user_id and user_id != "anonymous":
+            # Verify ownership
+            cur.execute(
+                "select 1 from sessions where session_id = %s and user_id = %s",
+                (session_id, user_id)
+            )
+            if not cur.fetchone():
+                cur.close()
+                conn.close()
+                raise HTTPException(status_code=403, detail="Session does not belong to this user")
+        
+        cur.execute(
+            "update sessions set running_summary = %s where session_id = %s",
+            (update.running_summary, session_id)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "SUCCESS", "message": "Session renamed successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to rename session: {str(e)}")
+
+@app.post("/api/research/follow-ups")
+async def generate_follow_ups(req: FollowUpsRequest):
+    try:
+        from langchain_core.messages import SystemMessage, HumanMessage
+        from backend.app.agents.utils import get_openai_client
+        llm = get_openai_client()
+        
+        system_prompt = (
+            "You are a helpful research assistant. Based on the following research query and synthesized report, "
+            "generate exactly 3 interesting, relevant follow-up questions that a reader might ask for deeper research.\n\n"
+            "You MUST return the response as a valid JSON list of strings (e.g. [\"question 1\", \"question 2\", \"question 3\"]). "
+            "Do not output markdown code blocks or any conversational intro/outro text, just the raw JSON."
+        )
+        user_prompt = f"Original Query: {req.query}\n\nReport:\n{req.answer}"
+        
+        res = llm.invoke([
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt)
+        ])
+        
+        content = res.content.strip()
+        # Clean potential markdown wrapping
+        if content.startswith("```json"):
+            content = content[7:]
+        if content.endswith("```"):
+            content = content[:-3]
+        content = content.strip()
+        
+        questions = json.loads(content)
+        return {"follow_ups": questions}
+    except Exception as e:
+        print(f"Error generating follow-ups: {e}")
+        return {"follow_ups": [
+            f"Can you explain more about the technical details related to {req.query[:30]}?",
+            "What are the major industry benchmarks or competitors in this space?",
+            "What are the key limitations or future research aspects identified?"
+        ]}
+

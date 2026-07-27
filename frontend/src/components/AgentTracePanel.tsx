@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Activity, X, Check, Loader2, AlertCircle, ChevronUp, ChevronDown, Link } from 'lucide-react';
 
 export interface AgentStep {
   id: string;
@@ -22,18 +23,18 @@ export const AgentTracePanel: React.FC<AgentTracePanelProps> = ({
 }) => {
   const [expandedStepId, setExpandedStepId] = useState<string | null>('step-search'); // Default expand search to match design
 
-  if (!isOpen) return null;
-
   const toggleExpand = (id: string) => {
     setExpandedStepId(expandedStepId === id ? null : id);
   };
 
   return (
-    <aside className="w-[340px] bg-surface-container-low flex flex-col h-full flex-shrink-0 relative z-10 shadow-2xl border-l border-white/5">
+    <aside className={`w-[340px] bg-surface-container-low flex flex-col h-full flex-shrink-0 relative z-10 shadow-2xl border-l border-white/5 transition-all duration-300 ease-in-out ${
+      isOpen ? 'translate-x-0 opacity-100' : 'translate-x-full -mr-[340px] opacity-0 pointer-events-none'
+    }`}>
       {/* Header */}
       <div className="p-6 pb-4 flex justify-between items-center bg-surface-container-low">
         <h3 className="font-headline-sm text-headline-sm font-bold text-on-surface flex items-center gap-2">
-          <span className="material-symbols-outlined text-primary text-[20px]">route</span>
+          <Activity className="w-5 h-5 text-primary" />
           <span>Agent Trace</span>
         </h3>
         <div className="flex items-center gap-4">
@@ -43,43 +44,57 @@ export const AgentTracePanel: React.FC<AgentTracePanelProps> = ({
           </span>
           <button
             onClick={onClose}
-            className="text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center p-1.5 rounded-full hover:bg-surface-variant/30 active:scale-95"
+            className="text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center p-1.5 rounded-full hover:bg-surface-variant/30 active:scale-95 cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[20px]">close</span>
+            <X className="w-5 h-5" />
           </button>
         </div>
       </div>
 
       {/* Stepper Content */}
       <div className="flex-grow overflow-y-auto p-6 pt-2">
-        <div className="relative pl-6 space-y-8 before:absolute before:inset-y-0 before:left-[11px] before:w-0.5 before:bg-gradient-to-b before:from-secondary before:via-primary before:to-white/10">
-          {steps.map((step) => {
+        <div className="relative space-y-8">
+          {steps.map((step, index) => {
             const isCompleted = step.status === 'completed';
             const isRunning = step.status === 'running';
             const isFailed = step.status === 'failed';
             const isPending = step.status === 'pending';
             const isExpanded = expandedStepId === step.id;
+            const isLast = index === steps.length - 1;
 
             return (
               <div key={step.id} className={`relative flex items-start group ${isPending ? 'opacity-60' : ''}`}>
-                {/* Stepper Icon */}
-                <div className={`flex items-center justify-center w-7 h-7 rounded-full absolute -left-[1.5rem] shadow-sm z-10 border ${
+                {/* Connecting Line Segment to Next Node (Starts at bottom of current node, ends at top of next node) */}
+                {!isLast && (
+                  <div 
+                    className={`absolute left-[13px] top-7 bottom-[-32px] w-0.5 pointer-events-none ${
+                      isCompleted 
+                        ? 'bg-gradient-to-b from-secondary/80 to-primary/60' 
+                        : isRunning 
+                        ? 'bg-gradient-to-b from-primary/80 to-white/10' 
+                        : 'bg-white/10'
+                    }`} 
+                  />
+                )}
+
+                {/* Stepper Icon Node */}
+                <div className={`flex items-center justify-center w-7 h-7 rounded-full absolute left-0 top-0 shadow-sm z-10 border ${
                   isCompleted 
-                    ? 'bg-secondary-container/20 border-secondary text-secondary' 
+                    ? 'bg-surface-container border-secondary text-secondary' 
                     : isRunning 
-                    ? 'bg-primary-container/20 border-primary text-primary shadow-[0_0_12px_rgba(75,142,255,0.3)]'
+                    ? 'bg-surface-container border-primary text-primary shadow-[0_0_12px_rgba(75,142,255,0.3)]'
                     : isFailed 
-                    ? 'bg-error-container/20 border-error text-error' 
+                    ? 'bg-surface-container border-error text-error' 
                     : 'bg-surface-container border-outline-variant text-on-surface-variant'
                 }`}>
                   {isCompleted && (
-                    <span className="material-symbols-outlined text-[15px] font-bold">check</span>
+                    <Check className="w-4 h-4" />
                   )}
                   {isRunning && (
-                    <span className="material-symbols-outlined text-[15px] animate-spin">sync</span>
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   )}
                   {isFailed && (
-                    <span className="material-symbols-outlined text-[15px] font-bold">close</span>
+                    <AlertCircle className="w-4 h-4 text-error" />
                   )}
                   {isPending && (
                     <span className="block w-2 h-2 bg-on-surface-variant/50 rounded-full"></span>
@@ -87,7 +102,7 @@ export const AgentTracePanel: React.FC<AgentTracePanelProps> = ({
                 </div>
 
                 {/* Step Details */}
-                <div className="w-full pl-5">
+                <div className="w-full pl-10 pt-0.5">
                   <div
                     onClick={() => (step.urls || isRunning) && toggleExpand(step.id)}
                     className={`font-bold text-sm flex items-center justify-between cursor-pointer transition-colors ${
@@ -96,9 +111,7 @@ export const AgentTracePanel: React.FC<AgentTracePanelProps> = ({
                   >
                     <span>{step.agent}</span>
                     {step.urls && (
-                      <span className="material-symbols-outlined text-[18px] text-on-surface-variant select-none">
-                        {isExpanded ? 'expand_less' : 'expand_more'}
-                      </span>
+                      isExpanded ? <ChevronUp className="w-4 h-4 text-on-surface-variant" /> : <ChevronDown className="w-4 h-4 text-on-surface-variant" />
                     )}
                   </div>
                   <div className="text-[11px] text-on-surface-variant font-code-md mt-1">
@@ -122,8 +135,8 @@ export const AgentTracePanel: React.FC<AgentTracePanelProps> = ({
                     <div className="bg-surface-container rounded-2xl p-3 text-[11px] space-y-2 mt-2 max-h-40 overflow-y-auto shadow-inner border border-white/5 animate-fadeIn">
                       {step.urls.map((url, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-on-surface-variant hover:text-primary cursor-pointer truncate p-1 transition-colors">
-                          <span className="material-symbols-outlined text-[14px]">link</span>
-                          <span>{url}</span>
+                          <Link className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span className="truncate">{url}</span>
                         </div>
                       ))}
                     </div>

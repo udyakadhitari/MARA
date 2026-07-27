@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SignedIn, SignedOut, RedirectToSignIn, useUser, useAuth } from '@clerk/clerk-react';
 import Sidebar from './components/Sidebar';
-import Workspace from './components/Workspace';
+import Workspace, { convertMarkdownToPrintHtml } from './components/Workspace';
 import AgentTracePanel from './components/AgentTracePanel';
 import type { AgentStep } from './components/AgentTracePanel';
 import type { CitedSource } from './components/CitedSources';
@@ -16,19 +16,109 @@ const INITIAL_STEPS: AgentStep[] = [
 
 // (Removed unused HistoryItem)
 
+interface ToastItem {
+  id: string;
+  message: string;
+  type: 'success' | 'error' | 'info' | 'warning';
+}
+
 function App() {
   // Clerk auth hooks
   const { user } = useUser();
-  const { getToken } = useAuth();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const clerkUserId = user?.id || '';
+  
+  const [pinnedSessions, setPinnedSessions] = useState<string[]>([]);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
 
+  const showToast = (message: string, type: ToastItem['type'] = 'info') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 3000);
+  };
+
+  const handlePinSession = (sid: string) => {
+    let updatedPinned = [...pinnedSessions];
+    if (pinnedSessions.includes(sid)) {
+      updatedPinned = updatedPinned.filter(id => id !== sid);
+      showToast("Session unpinned", "info");
+    } else {
+      if (pinnedSessions.length >= 5) {
+        showToast("Maximum of 5 pinned chats allowed", "warning");
+        return;
+      }
+      updatedPinned.push(sid);
+      showToast("Session pinned to top", "success");
+    }
+    setPinnedSessions(updatedPinned);
+    localStorage.setItem('mara_pinned_sessions', JSON.stringify(updatedPinned));
+  };
+
+  const handleRenameSession = async (sid: string) => {
+    const session = sessionsList.find(s => s.session_id === sid);
+    const currentName = session ? session.running_summary : "";
+    const newName = prompt("Rename Research Session:", currentName);
+    if (newName && newName.trim() && newName.trim() !== currentName) {
+      try {
+        const token = await getToken();
+        const res = await fetch(`http://localhost:8000/api/sessions/${sid}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ running_summary: newName.trim() })
+        });
+        if (res.ok) {
+          showToast("Session renamed successfully", "success");
+          setSessionsList(prev => prev.map(s => s.session_id === sid ? { ...s, running_summary: newName.trim() } : s));
+        } else {
+          showToast("Failed to rename session", "error");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("Error renaming session", "error");
+      }
+    }
+  };
+
+  const handleDeleteSession = async (sid: string) => {
+    if (confirm("Are you sure you want to delete this research session? This will remove all messages from this session.")) {
+      try {
+        const token = await getToken();
+        const res = await fetch(`http://localhost:8000/api/sessions/${sid}`, {
+          method: 'DELETE',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (res.ok) {
+          showToast("Session deleted successfully", "success");
+          setSessionsList(prev => prev.filter(s => s.session_id !== sid));
+          if (sid === sessionId) {
+            handleNewResearch();
+          }
+        } else {
+          showToast("Failed to delete session", "error");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("Error deleting session", "error");
+      }
+    }
+  };
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+  const [sidebarWidth, setSidebarWidth] = useState<number>(300);
+  const [isResizing, setIsResizing] = useState<boolean>(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('workspace');
   const [activeQuery, setActiveQuery] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [streamingText, setStreamingText] = useState('');
+  const streamingTextRef = useRef('');
   const [sources, setSources] = useState<CitedSource[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [isTraceOpen, setIsTraceOpen] = useState(true);
+  const [isTraceOpen, setIsTraceOpen] = useState(false);
   const [traceSteps, setTraceSteps] = useState<AgentStep[]>(INITIAL_STEPS);
   const [progressText, setProgressText] = useState('0/5 sub-queries answered');
   // Session is keyed per Clerk user ID so different users don't share sessions
@@ -42,10 +132,44 @@ function App() {
   const [runTrace, setRunTrace] = useState<any | null>(null);
   const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  // Resize handler effect
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      let newWidth = e.clientX;
+      if (newWidth < 200) newWidth = 200;
+      if (newWidth > 600) newWidth = 600;
+      setSidebarWidth(newWidth);
+      if (isSidebarCollapsed) {
+        setIsSidebarCollapsed(false);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, isSidebarCollapsed]);
+
   // Settings state
-  const [settings, setSettings] = useState({
+  const [, setSettings] = useState({
     model: 'gpt-4o-mini',
     temperature: 0.2,
+
     searchDepth: 'DEEP',
     maxResults: 10
   });
@@ -113,64 +237,53 @@ function App() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
     
-    // Parse markdown styling roughly for printing
-    const formattedHtml = streamingText
-      .split('\n\n')
-      .map(p => {
-        if (p.startsWith('# ')) return `<h1>${p.replace('# ', '')}</h1>`;
-        if (p.startsWith('## ')) return `<h2>${p.replace('## ', '')}</h2>`;
-        if (p.startsWith('### ')) return `<h3>${p.replace('### ', '')}</h3>`;
-        if (p.includes('σ = (L / A)')) return `<pre><code>${p}</code></pre>`;
-        return `<p>${p.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</p>`;
-      })
-      .join('\n');
+    const formattedHtml = convertMarkdownToPrintHtml(streamingText);
 
     printWindow.document.write(`
+      <!DOCTYPE html>
       <html>
         <head>
           <title>${activeQuery || 'MARA Research Report'}</title>
           <style>
-            body { font-family: system-ui, -apple-system, sans-serif; padding: 50px; color: #1f2937; line-height: 1.7; max-width: 800px; margin: 0 auto; }
-            h1 { font-size: 2.25rem; font-weight: 800; color: #111827; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
-            h2 { font-size: 1.5rem; font-weight: 700; color: #1f2937; margin-top: 30px; }
-            h3 { font-size: 1.25rem; font-weight: 600; color: #374151; margin-top: 25px; }
-            p { margin-bottom: 15px; }
+            body { font-family: system-ui, -apple-system, sans-serif; padding: 40px; color: #1f2937; line-height: 1.7; max-width: 850px; margin: 0 auto; }
+            h1 { font-size: 1.8rem; font-weight: 800; color: #111827; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
+            h2 { font-size: 1.4rem; font-weight: 700; color: #1f2937; margin-top: 24px; margin-bottom: 12px; }
+            h3 { font-size: 1.15rem; font-weight: 600; color: #374151; margin-top: 20px; margin-bottom: 10px; }
+            p { margin-bottom: 12px; }
+            blockquote { border-left: 4px solid #2563eb; background: #f0f9ff; padding: 12px 16px; margin: 16px 0; border-radius: 0 8px 8px 0; color: #1e40af; }
             pre { background: #f3f4f6; padding: 16px; border-radius: 8px; font-family: monospace; overflow-x: auto; border: 1px solid #e5e7eb; }
             code { font-family: monospace; background: #f3f4f6; padding: 2px 4px; border-radius: 4px; }
-            hr { border: 0; border-top: 1px solid #e5e7eb; margin: 40px 0; }
-            .sources { margin-top: 50px; border-top: 3px solid #111827; padding-top: 20px; }
-            .source-item { margin-bottom: 20px; font-size: 0.95rem; }
+            hr { border: 0; border-top: 1px solid #e5e7eb; margin: 30px 0; }
+            .sources { margin-top: 40px; border-top: 2px solid #e5e7eb; padding-top: 20px; }
+            .source-item { margin-bottom: 16px; font-size: 0.9rem; }
             .source-title { font-weight: 700; color: #111827; }
-            .source-url { font-size: 0.85em; color: #2563eb; text-decoration: none; word-break: break-all; }
-            .source-summary { color: #4b5563; font-style: italic; margin-top: 4px; }
+            .source-url { color: #2563eb; text-decoration: none; word-break: break-all; }
           </style>
         </head>
         <body>
-          <h1>${activeQuery}</h1>
+          <h1 style="color: #2563eb;">Research Topic: ${activeQuery || 'Research Report'}</h1>
           <hr/>
           <div>${formattedHtml}</div>
           ${sources.length > 0 ? `
             <div class="sources">
-              <h2>Cited Sources</h2>
+              <h2 style="font-size: 1.2rem; font-weight: 700; color: #111827;">Cited Sources</h2>
               ${sources.map(s => `
                 <div class="source-item">
                   <div class="source-title">[${s.id}] ${s.title}</div>
                   <a class="source-url" href="${s.url}" target="_blank">${s.url}</a>
-                  <div class="source-summary">${s.summary}</div>
+                  <div style="color: #4b5563; font-style: italic; margin-top: 4px;">${s.summary}</div>
                 </div>
               `).join('')}
             </div>
           ` : ''}
-          <script>
-            window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            };
-          </script>
         </body>
       </html>
     `);
     printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 250);
   };
 
   const handleViewTrace = async () => {
@@ -189,60 +302,153 @@ function App() {
     }
   };
 
-  const fetchSessions = async () => {
+  const fetchFollowUpsSeparately = async (queryText: string, answerText: string) => {
     try {
-      const token = await getToken();
-      const res = await fetch('http://localhost:8000/api/sessions', {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      const res = await fetch('http://localhost:8000/api/research/follow-ups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: queryText, answer: answerText })
       });
       if (res.ok) {
+        const data = await res.json();
+        setFollowUps(data.follow_ups || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch follow-ups separately:', err);
+    }
+  };
+
+  const fetchSessions = async (retries = 5, showSkeleton = true) => {
+    if (showSkeleton) {
+      setIsHistoryLoading(true);
+    }
+    for (let i = 0; i < retries; i++) {
+      try {
+        const token = await getToken();
+        if (!token) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        }
+        const res = await fetch('http://localhost:8000/api/sessions', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) {
+          throw new Error(`Server returned ${res.status}`);
+        }
         const data = await res.json();
         setSessionsList(data);
+        if (showSkeleton) {
+          setIsHistoryLoading(false);
+        }
+        return data;
+      } catch (err) {
+        console.error(`Failed to fetch sessions (attempt ${i + 1}):`, err);
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
-    } catch (err) {
-      console.error('Failed to fetch sessions:', err);
     }
+    if (showSkeleton) {
+      setIsHistoryLoading(false);
+    }
+    return [];
   };
 
-  const loadSessionMessages = async (sid: string) => {
-    try {
-      const token = await getToken();
-      const res = await fetch(`http://localhost:8000/api/sessions/${sid}/messages`, {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
-      if (res.ok) {
+  const loadSessionMessages = async (sid: string, showSkeleton = true, retries = 5) => {
+    setSessionId(sid);
+    localStorage.setItem('mara_session_id', sid);
+    if (showSkeleton) {
+      setIsHistoryLoading(true);
+    }
+    for (let i = 0; i < retries; i++) {
+      try {
+        const token = await getToken();
+        if (!token) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        }
+        const res = await fetch(`http://localhost:8000/api/sessions/${sid}/messages`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) {
+          throw new Error(`Server returned ${res.status}`);
+        }
         const data = await res.json();
         const turns = data.map((t: any) => ({
-          query: t.query,
-          answer: t.answer,
-          sources: (t.sources || []).map((url: string, idx: number) => ({
-            id: (idx + 1).toString(),
-            title: 'Cited Source',
-            publication: 'Web Scrape',
-            summary: 'Verified factual reference',
-            url: url,
-            relevance: 100
-          }))
-        }));
-        setChatHistory(turns);
-        if (turns.length > 0) {
-          setActiveQuery(turns[turns.length - 1].query);
-        }
+            query: t.query,
+            answer: t.answer,
+            sources: (t.sources || []).map((url: string, idx: number) => ({
+              id: (idx + 1).toString(),
+              title: 'Cited Source',
+              publication: 'Web Scrape',
+              summary: 'Verified factual reference',
+              url: url,
+              relevance: 100
+            }))
+          }));
+          
+          // Clear transient states from previous queries
+          setStreamingText('');
+          setSources([]);
+          setFollowUps([]);
+          setIsLoading(false);
+          setError(null);
+          
+          setChatHistory(turns);
+          if (turns.length > 0) {
+            const lastTurn = turns[turns.length - 1];
+            setActiveQuery(lastTurn.query);
+            fetchFollowUpsSeparately(lastTurn.query, lastTurn.answer);
+          } else {
+            setActiveQuery(null);
+          }
+          if (showSkeleton) {
+            setIsHistoryLoading(false);
+          }
+          return;
+      } catch (err) {
+        console.error(`Failed to load messages (attempt ${i + 1}):`, err);
+        await new Promise(resolve => setTimeout(resolve, 800));
       }
-    } catch (err) {
-      console.error('Failed to load session messages:', err);
+    }
+    if (showSkeleton) {
+      setIsHistoryLoading(false);
     }
   };
 
-  // Fetch history, sessions, and settings on mount
+  // Fetch settings and pinned sessions on mount
   useEffect(() => {
-    fetchSessions();
     fetchSettings();
-    const storedSession = localStorage.getItem('mara_session_id');
-    if (storedSession) {
-      loadSessionMessages(storedSession);
+    const storedPinned = localStorage.getItem('mara_pinned_sessions');
+    if (storedPinned) {
+      setPinnedSessions(JSON.parse(storedPinned));
     }
   }, []);
+
+  // Fetch history and sessions once Clerk user resolves
+  useEffect(() => {
+    if (isLoaded && isSignedIn && clerkUserId) {
+      const loadInitialSessions = async () => {
+        const sessions = await fetchSessions();
+        const storedSession = localStorage.getItem('mara_session_id');
+        const sessionExists = sessions && sessions.some((s: any) => s.session_id === storedSession);
+        
+        if (storedSession && sessionExists) {
+          setSessionId(storedSession);
+          loadSessionMessages(storedSession);
+        } else if (sessions && sessions.length > 0) {
+          const latestSessionId = sessions[0].session_id;
+          setSessionId(latestSessionId);
+          localStorage.setItem('mara_session_id', latestSessionId);
+          loadSessionMessages(latestSessionId);
+        } else {
+          // No sessions or deleted session, clear workspace
+          setChatHistory([]);
+          setSessionId('');
+          localStorage.removeItem('mara_session_id');
+        }
+      };
+      loadInitialSessions();
+    }
+  }, [isLoaded, isSignedIn, clerkUserId]);
 
 // (Removed unused fetchHistory)
 
@@ -263,45 +469,30 @@ function App() {
     }
   };
 
-  const handleSaveSettings = async () => {
-    try {
-      const res = await fetch('http://localhost:8000/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          default_model: settings.model,
-          temperature: settings.temperature,
-          search_depth: settings.searchDepth
-        })
-      });
-      if (res.ok) {
-        alert('Configuration saved to backend successfully.');
-      } else {
-        alert('Failed to save configuration.');
-      }
-    } catch (err) {
-      console.error('Failed to save settings:', err);
-      alert('Network error while saving settings.');
-    }
-  };
-
   const handleNewResearch = () => {
     setActiveTab('workspace');
     setActiveQuery(null);
     setStreamingText('');
     setSources([]);
+    setFollowUps([]);
+    setInputValue('');
     setError(null);
     setTraceSteps(INITIAL_STEPS);
     setIsLoading(false);
     setSessionId('');
     setChatHistory([]);
     localStorage.removeItem('mara_session_id');
+    fetchSessions(3, false);
   };
 
   const handleRunResearch = async (query: string) => {
     setActiveQuery(query);
     setIsLoading(true);
     setStreamingText('');
+    streamingTextRef.current = '';
+    setInputValue('');
+    setFollowUps([]);
+    setIsTraceOpen(false);
     setSources([]);
     setError(null);
     setProgressText('Submitting task...');
@@ -339,8 +530,8 @@ function App() {
       setFollowUps([]);
       setSessionId(returnedSessionId);
 
-      // Update sessions list immediately
-      fetchSessions();
+      // Update sessions list immediately without showing skeleton loader
+      fetchSessions(5, false);
 
       // 2. Open EventSource for SSE streaming
       const eventSource = new EventSource(`http://localhost:8000/api/research/stream/${taskId}`);
@@ -399,7 +590,7 @@ function App() {
           const total = Object.keys(results).length;
           const successCount = Object.values(results).filter((r: any) => r.status === 'success').length;
           
-          setProgressText('Active Stage: SYNTHESIZE');
+          setProgressText('Active Stage: VERIFY');
           setTraceSteps(prev => prev.map(s => {
             if (s.id === 'step-scrape') {
               return { 
@@ -408,8 +599,8 @@ function App() {
                 message: `Scraped ${successCount}/${total} pages successfully.` 
               };
             }
-            if (s.id === 'step-synthesize') {
-              return { ...s, status: 'running', message: 'Streaming report contents...' };
+            if (s.id === 'step-verify') {
+              return { ...s, status: 'running', message: 'Verifying claims and factual citations...' };
             }
             return s;
           }));
@@ -441,6 +632,13 @@ function App() {
                 };
               }
             }
+            if (s.id === 'step-synthesize') {
+              if (verdict === 'pass') {
+                return { ...s, status: 'running', message: 'Streaming report contents...' };
+              } else {
+                return { ...s, status: 'pending', message: 'Awaiting corrected draft...' };
+              }
+            }
             return s;
           }));
         } catch (e) {
@@ -453,7 +651,11 @@ function App() {
           const data = JSON.parse(event.data);
           if (!data.done) {
             const chunk = data.chunk;
-            setStreamingText(prev => prev + chunk);
+            setStreamingText(prev => {
+              const newVal = prev + chunk;
+              streamingTextRef.current = newVal;
+              return newVal;
+            });
             setTraceSteps(prev => prev.map(s => 
               s.id === 'step-synthesize' ? { ...s, status: 'running', message: 'Streaming report contents...' } : s
             ));
@@ -504,12 +706,28 @@ function App() {
           setTraceSteps(prev => prev.map(s => ({ ...s, status: 'completed' })));
           setProgressText('Research complete.');
           
-          // Refresh sessions list
-          fetchSessions();
-          if (returnedSessionId) {
-            loadSessionMessages(returnedSessionId);
-          }
+          // Immediately preserve completed research turn in chat history
+          const completedTurn = {
+            query: query,
+            answer: streamingTextRef.current,
+            sources: sources
+          };
+          setChatHistory(prev => {
+            if (prev.some(t => t.query === query && t.answer === streamingTextRef.current)) {
+              return prev;
+            }
+            return [...prev, completedTurn];
+          });
           setStreamingText('');
+          
+          // Refresh sessions list silently
+          fetchSessions(5, false);
+          if (returnedSessionId) {
+            setSessionId(returnedSessionId);
+            localStorage.setItem('mara_session_id', returnedSessionId);
+          }
+          // Fetch follow up questions separately!
+          fetchFollowUpsSeparately(query, streamingTextRef.current);
         } catch (e) {
           console.error('Error parsing complete event:', e);
         }
@@ -561,15 +779,37 @@ function App() {
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
         onNewResearch={handleNewResearch} 
+        sessionsList={sessionsList}
+        currentSessionId={sessionId}
+        onSelectSession={(sid) => {
+          setSessionId(sid);
+          localStorage.setItem('mara_session_id', sid);
+          loadSessionMessages(sid);
+          setActiveTab('workspace');
+        }}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        sidebarWidth={sidebarWidth}
+        onResizeStart={handleMouseDown}
+        isResizing={isResizing}
+        isHistoryLoading={isHistoryLoading}
+        pinnedSessions={pinnedSessions}
+        onPinSession={handlePinSession}
+        onRenameSession={handleRenameSession}
+        onDeleteSession={handleDeleteSession}
       />
 
       {/* Main Workspace Layout Wrapper */}
-      <div className="flex-grow flex h-full overflow-hidden pl-sidebar-width">
+      <div 
+        className={`flex-grow flex h-full overflow-hidden ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
+        style={{ paddingLeft: isSidebarCollapsed ? 72 : sidebarWidth }}
+      >
         {activeTab === 'workspace' && (
           <Workspace
             activeQuery={activeQuery}
             onSubmitQuery={handleRunResearch}
             isLoading={isLoading}
+            isHistoryLoading={isHistoryLoading}
             streamingText={streamingText}
             sources={sources}
             error={error}
@@ -589,155 +829,7 @@ function App() {
             chatHistory={chatHistory}
           />
         )}
-        {/* History View */}
-        {activeTab === 'history' && (
-          <div className="flex-grow p-container-padding overflow-y-auto bg-surface-container-lowest max-w-4xl mx-auto w-full mt-10">
-            <h2 className="font-headline-lg text-headline-lg font-bold text-on-surface mb-6 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-[28px]">history</span>
-              <span>Research History Sessions</span>
-            </h2>
-            <div className="space-y-4">
-              {sessionsList.length === 0 ? (
-                <div className="text-on-surface-variant text-sm py-8 text-center border border-dashed border-white/10 rounded-2xl">
-                  No research sessions found in database.
-                </div>
-              ) : (
-                sessionsList.map(session => (
-                  <div 
-                    key={session.session_id}
-                    onClick={() => {
-                      setSessionId(session.session_id);
-                      localStorage.setItem('mara_session_id', session.session_id);
-                      loadSessionMessages(session.session_id);
-                      setActiveTab('workspace');
-                    }}
-                    className="bg-surface-container rounded-2xl p-5 hover:bg-surface-container-high border border-white/5 cursor-pointer transition-all flex items-center justify-between group active:scale-[0.99] border-solid"
-                  >
-                    <div className="flex-grow pr-4">
-                      <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined text-primary text-[20px]">forum</span>
-                        <h3 className="font-bold text-on-surface group-hover:text-primary transition-colors text-base">
-                          {session.running_summary || `Session (${session.session_id.substring(0,8)})`}
-                        </h3>
-                      </div>
-                      <div className="flex gap-4 mt-2 items-center">
-                        <span className="text-xs text-on-surface-variant font-code-md block">
-                          Created: {new Date(session.created_at).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                    <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors shrink-0">
-                      arrow_forward
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
 
-        {/* Library View */}
-        {activeTab === 'library' && (
-          <div className="flex-grow p-container-padding overflow-y-auto bg-surface-container-lowest max-w-4xl mx-auto w-full mt-10">
-            <h2 className="font-headline-lg text-headline-lg font-bold text-on-surface mb-6 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-[28px]">book</span>
-              <span>Library</span>
-            </h2>
-            <p className="text-sm text-on-surface-variant mb-8 leading-relaxed">
-              Your saved documents, academic publications, and generated summaries. Click to read or download.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-surface-container rounded-2xl p-6 border border-white/5">
-                <span className="material-symbols-outlined text-secondary text-[32px] mb-3">description</span>
-                <h3 className="font-bold text-on-surface text-base mb-1">solid_state_battery_review.pdf</h3>
-                <span className="text-xs text-on-surface-variant font-code-md">Added: 2026-07-02 | 14.2 MB</span>
-              </div>
-              <div className="bg-surface-container rounded-2xl p-6 border border-white/5">
-                <span className="material-symbols-outlined text-secondary text-[32px] mb-3">description</span>
-                <h3 className="font-bold text-on-surface text-base mb-1">lithium_dendrites_study.pdf</h3>
-                <span className="text-xs text-on-surface-variant font-code-md">Added: 2026-07-01 | 8.5 MB</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Settings View */}
-        {activeTab === 'settings' && (
-          <div className="flex-grow p-container-padding overflow-y-auto bg-surface-container-lowest max-w-3xl mx-auto w-full mt-10">
-            <h2 className="font-headline-lg text-headline-lg font-bold text-on-surface mb-6 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-[28px]">settings</span>
-              <span>Settings</span>
-            </h2>
-            
-            <div className="bg-surface-container rounded-3xl p-8 border border-white/5 space-y-6">
-              {/* Model selection */}
-              <div>
-                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Default LLM Model</label>
-                <select 
-                  value={settings.model} 
-                  onChange={(e) => setSettings({ ...settings, model: e.target.value })}
-                  className="w-full bg-surface-container-low border border-white/10 text-on-surface rounded-xl p-3 focus:outline-none focus:border-primary text-sm font-medium"
-                >
-                  <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite (Fast & Efficient)</option>
-                  <option value="gemini-3.5-flash">Gemini 3.5 Flash (Analytical & Precise)</option>
-                </select>
-              </div>
-
-              {/* Temperature slider */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider">Temperature</label>
-                  <span className="text-xs font-code-md text-primary font-bold">{settings.temperature}</span>
-                </div>
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="1" 
-                  step="0.1"
-                  value={settings.temperature}
-                  onChange={(e) => setSettings({ ...settings, temperature: parseFloat(e.target.value) })}
-                  className="w-full accent-primary bg-surface-container-low h-1.5 rounded-lg appearance-none cursor-pointer"
-                />
-              </div>
-
-              {/* Search depth */}
-              <div>
-                <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Web Scraping Depth</label>
-                <div className="grid grid-cols-2 gap-4">
-                  <button 
-                    onClick={() => setSettings({ ...settings, searchDepth: 'STANDARD' })}
-                    className={`p-3 rounded-xl border text-sm font-medium transition-all ${
-                      settings.searchDepth === 'STANDARD' 
-                        ? 'border-primary bg-primary/10 text-primary' 
-                        : 'border-white/10 bg-surface-container-low hover:bg-surface-variant/30 text-on-surface-variant'
-                    }`}
-                  >
-                    Standard (Fast)
-                  </button>
-                  <button 
-                    onClick={() => setSettings({ ...settings, searchDepth: 'DEEP' })}
-                    className={`p-3 rounded-xl border text-sm font-medium transition-all ${
-                      settings.searchDepth === 'DEEP' 
-                        ? 'border-primary bg-primary/10 text-primary shadow-[0_0_12px_rgba(75,142,255,0.05)]' 
-                        : 'border-white/10 bg-surface-container-low hover:bg-surface-variant/30 text-on-surface-variant'
-                    }`}
-                  >
-                    Deep Research (Thorough)
-                  </button>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-white/5 flex justify-end">
-                <button 
-                  onClick={handleSaveSettings}
-                  className="bg-primary text-on-primary font-bold py-2.5 px-6 rounded-xl hover:bg-primary-fixed transition-all text-xs shadow-md active:scale-95"
-                >
-                  Save Configuration
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Right Stepper Panel */}
         {activeTab === 'workspace' && activeQuery && (
@@ -787,6 +879,39 @@ function App() {
             </div>
           </div>
         )}
+      </div>
+      
+      {/* Toast Container */}
+      <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 pointer-events-none">
+        {toasts.map(toast => {
+          const iconMap = {
+            success: 'check_circle',
+            error: 'error',
+            info: 'info',
+            warning: 'warning'
+          };
+          const colorMap = {
+            success: 'border-emerald-500/25 bg-emerald-950/80 text-emerald-300',
+            error: 'border-red-500/25 bg-red-950/80 text-red-300',
+            info: 'border-primary/25 bg-primary-container/20 text-primary',
+            warning: 'border-amber-500/25 bg-amber-950/80 text-amber-300'
+          };
+          return (
+            <div 
+              key={toast.id}
+              className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl border backdrop-blur-xl shadow-2xl animate-slideIn select-none max-w-sm ${colorMap[toast.type]}`}
+            >
+              <span className="material-symbols-outlined text-[20px]">{iconMap[toast.type]}</span>
+              <span className="text-xs font-semibold">{toast.message}</span>
+              <button 
+                onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+                className="ml-auto p-1 hover:bg-white/10 rounded-full text-on-surface-variant/60 hover:text-on-surface transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[14px]">close</span>
+              </button>
+            </div>
+          );
+        })}
       </div>
     </div>
       </SignedIn>

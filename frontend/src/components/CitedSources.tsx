@@ -1,4 +1,5 @@
 import React from 'react';
+import { BookOpen } from 'lucide-react';
 
 export interface CitedSource {
   id: string | number;
@@ -19,9 +20,7 @@ export const CitedSources: React.FC<CitedSourcesProps> = ({ sources }) => {
   return (
     <div className="mt-8">
       <h3 className="font-headline-sm text-headline-sm mb-4 text-on-surface flex items-center gap-2 font-semibold">
-        <span className="material-symbols-outlined text-[20px] text-on-surface-variant select-none">
-          library_books
-        </span>
+        <BookOpen className="w-5 h-5 text-on-surface-variant" />
         <span>Cited Sources</span>
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

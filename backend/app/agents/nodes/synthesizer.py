@@ -4,8 +4,8 @@ from ..state import AgentState
 from ..models import SynthesizedAnswerModel
 from ..utils import get_openai_client
 
-def synthesizer_node(state: AgentState) -> Dict[str, Any]:
-    print("\n--- [Synthesizer Node] Synthesizing Structured Report ---")
+def drafter_node(state: AgentState) -> Dict[str, Any]:
+    print("\n--- [Drafter Node] Generating Initial Research Draft ---")
     original_query = state["original_query"]
     sub_queries = state["sub_queries"]
     scraped_content = state["scraped_content"]
@@ -77,3 +77,54 @@ def synthesizer_node(state: AgentState) -> Dict[str, Any]:
         "retry_count": retry_count,
         "follow_up_questions": result.follow_up_questions
     }
+
+def clean_markdown_fences(text: str) -> str:
+    if not text:
+        return ""
+    cleaned = text.strip()
+    if cleaned.startswith("```markdown"):
+        cleaned = cleaned[len("```markdown"):].strip()
+    elif cleaned.startswith("```"):
+        cleaned = cleaned[3:].strip()
+    if cleaned.endswith("```"):
+        cleaned = cleaned[:-3].strip()
+    return cleaned
+
+def synthesizer_node(state: AgentState) -> Dict[str, Any]:
+    print("\n--- [Synthesizer Node] Running Final Format & Polish Pass ---")
+    draft_answer = state.get("draft_answer", "")
+    original_query = state.get("original_query", "")
+    claims = state.get("claims", [])
+    confidence = state.get("confidence", 0.0)
+    follow_up_questions = state.get("follow_up_questions", [])
+    
+    llm = get_openai_client()
+    
+    system_prompt = (
+        "You are an expert technical editor. Your job is to format the given research report "
+        "to be visually beautiful, structured, and perfectly readable. You must ensure:\n"
+        "1. Heading tags (`#`, `##`, `###`) are clearly utilized, with titles and key sections in bold and larger headers.\n"
+        "2. Factual statements are styled cleanly with bold terms and nicely indented bulleted lists where appropriate.\n"
+        "3. Any URL or link in the text MUST be formatted as clickable markdown links: `[Link Title](URL)` instead of raw URLs.\n"
+        "4. Keep the factual details, claims, warning alerts, and content exactly identical to the draft answer. Do not add "
+        "new facts that are not present in the draft.\n\n"
+        "Output the final polished report directly in Markdown format. Do NOT enclose the report in ```markdown or ``` code fences."
+    )
+    
+    user_prompt = f"Original Query: {original_query}\n\nDraft Answer Report to format:\n{draft_answer}"
+    
+    messages = [
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=user_prompt)
+    ]
+    
+    response = llm.invoke(messages)
+    final_answer = clean_markdown_fences(response.content)
+    
+    return {
+        "draft_answer": final_answer,
+        "claims": claims,
+        "confidence": confidence,
+        "follow_up_questions": follow_up_questions
+    }
+

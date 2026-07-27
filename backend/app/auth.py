@@ -50,13 +50,17 @@ def verify_clerk_token(token: str) -> dict:
             signing_key.key,
             algorithms=["RS256"],
             options={"verify_exp": True},
+            leeway=60,
         )
         return payload
     except jwt.ExpiredSignatureError:
+        print("[AUTH ERROR] Token has expired")
         raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.InvalidTokenError as exc:
+        print(f"[AUTH ERROR] Invalid token: {exc}")
         raise HTTPException(status_code=401, detail=f"Invalid token: {exc}")
     except Exception as exc:
+        print(f"[AUTH ERROR] Authentication error: {exc}")
         raise HTTPException(status_code=401, detail=f"Authentication error: {exc}")
 
 
@@ -92,5 +96,6 @@ async def get_current_user_optional(request: Request) -> Optional[str]:
     """
     try:
         return await get_current_user(request)
-    except HTTPException:
+    except HTTPException as e:
+        print(f"Auth failed in optional: {e.detail}")
         return None

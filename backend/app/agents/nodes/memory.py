@@ -152,6 +152,7 @@ def memory_write_node(state: AgentState) -> Dict[str, Any]:
             (session_id, turn_index, original_query, draft_answer, json.dumps(source_urls))
         )
         message_id = cur.fetchone()["message_id"]
+        conn.commit()
         
         # 5. Embed Turn (Query + Answer combined) & Save
         try:
@@ -163,8 +164,10 @@ def memory_write_node(state: AgentState) -> Dict[str, Any]:
                 "values (%s, %s)",
                 (message_id, embedding)
             )
+            conn.commit()
             print(f"  Successfully saved turn {turn_index} and generated embeddings.")
         except Exception as e:
+            conn.rollback()
             print(f"  Failed to save vector embedding: {e}")
             
         # 6. Periodic Conversation Summary (Every 5 turns)

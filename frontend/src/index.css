@@ -117,8 +117,86 @@
     background: #414755;
 }
 
+/* Disappearing Scrollbar Utility */
+.hide-scrollbar {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;  /* IE and Edge */
+}
+.hide-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+}
+.hide-scrollbar:hover {
+    scrollbar-width: thin;
+}
+.hide-scrollbar:hover::-webkit-scrollbar {
+    display: block;
+}
+
+
 /* Base override to ensure correct background and font */
 body {
     background-color: #10131b;
     font-family: 'Inter', sans-serif;
+}
+
+/* Light Mode Theme Overrides */
+html.light, body.light {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+}
+
+html.light {
+    --color-background: #f8fafc;
+    --color-surface: #f8fafc;
+    --color-surface-dim: #f1f5f9;
+    --color-surface-bright: #ffffff;
+    --color-surface-container-lowest: #ffffff;
+    --color-surface-container-low: #f8fafc;
+    --color-surface-container: #f1f5f9;
+    --color-surface-container-high: #e2e8f0;
+    --color-surface-container-highest: #cbd5e1;
+    --color-surface-variant: #e2e8f0;
+    --color-on-surface: #0f172a;
+    --color-on-surface-variant: #475569;
+    --color-on-background: #0f172a;
+    --color-outline-variant: #cbd5e1;
+    --color-outline: #94a3b8;
+    --color-primary: #2563eb;
+    --color-primary-container: #dbeafe;
+    --color-on-primary-container: #1e40af;
+    --color-secondary: #059669;
+    --color-secondary-container: #d1fae5;
+    --color-on-secondary-container: #065f46;
+}
+
+html.light .glass-panel {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+}
+
+/* Smooth theme mode transitions for background, colors, and borders */
+html, body, nav, header, main, aside, div, button, input, form, p, span, h1, h2, h3, h4, a {
+    transition: background-color 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
+                border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
+                color 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
+                box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Toast Animations */
+@keyframes slideIn {
+    from {
+        transform: translateY(1rem);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.animate-slideIn {
+    animation: slideIn 0.2s ease-out forwards;
 }
