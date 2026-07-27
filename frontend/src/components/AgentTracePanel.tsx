@@ -63,16 +63,16 @@ export const AgentTracePanel: React.FC<AgentTracePanelProps> = ({
             const isLast = index === steps.length - 1;
 
             return (
-              <div key={step.id} className={`relative flex items-start group ${isPending ? 'opacity-60' : ''}`}>
+              <div key={step.id} className="relative flex items-start group">
                 {/* Connecting Line Segment to Next Node (Starts at bottom of current node, ends at top of next node) */}
                 {!isLast && (
                   <div 
                     className={`absolute left-[13px] top-7 bottom-[-32px] w-0.5 pointer-events-none ${
                       isCompleted 
-                        ? 'bg-gradient-to-b from-emerald-500 to-blue-500' 
+                        ? 'bg-gradient-to-b from-emerald-500 to-blue-600' 
                         : isRunning 
-                        ? 'bg-gradient-to-b from-blue-500 to-slate-400 dark:to-white/20' 
-                        : 'bg-slate-300 dark:bg-white/15'
+                        ? 'bg-gradient-to-b from-blue-600 to-slate-400 dark:to-white/20' 
+                        : 'bg-slate-400 dark:bg-white/20'
                     }`} 
                   />
                 )}
@@ -85,7 +85,7 @@ export const AgentTracePanel: React.FC<AgentTracePanelProps> = ({
                     ? 'bg-surface-container border-primary text-primary shadow-[0_0_12px_rgba(75,142,255,0.3)]'
                     : isFailed 
                     ? 'bg-surface-container border-error text-error' 
-                    : 'bg-surface-container border-outline-variant text-on-surface-variant'
+                    : 'bg-surface-container border-slate-400 dark:border-white/20 text-on-surface-variant'
                 }`}>
                   {isCompleted && (
                     <Check className="w-4 h-4" />
@@ -97,7 +97,7 @@ export const AgentTracePanel: React.FC<AgentTracePanelProps> = ({
                     <AlertCircle className="w-4 h-4 text-error" />
                   )}
                   {isPending && (
-                    <span className="block w-2 h-2 bg-on-surface-variant/50 rounded-full"></span>
+                    <span className="block w-2 h-2 bg-slate-500 dark:bg-white/50 rounded-full"></span>
                   )}
                 </div>
 
