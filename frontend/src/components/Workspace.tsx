@@ -349,7 +349,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     <>
       <div className="flex-grow flex flex-col h-screen overflow-hidden bg-surface-container-lowest relative">
       {/* Top App Bar Header */}
-      <header className="bg-background/80 backdrop-blur-md border-b border-white/5 flex justify-between items-center h-16 px-gutter w-full z-40 shrink-0">
+      <header className="bg-background/80 backdrop-blur-md border-b border-slate-200 dark:border-white/5 flex justify-between items-center h-16 px-gutter w-full z-40 shrink-0">
         <div className="flex items-center gap-3">
           <img src={emblemImg} alt="MARA Emblem" className="w-7 h-7 object-contain flex-shrink-0" />
           <span className="font-headline-sm text-lg tracking-widest text-primary font-extrabold leading-none">
@@ -461,14 +461,14 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               
               {/* Past Turns History */}
               {chatHistory && chatHistory.map((turn, index) => (
-                <div key={`turn-${index}`} className="flex flex-col gap-6 border-b border-white/5 pb-10">
-                  <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                <div key={`turn-${index}`} className="flex flex-col gap-6 border-b border-slate-200 dark:border-white/5 pb-10">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/5 pb-2">
                     <div>
                       <span className="text-xs font-bold text-primary uppercase tracking-wider">Research Aspect</span>
                       <h2 className="text-lg font-bold text-on-surface mt-0.5">{turn.query}</h2>
                     </div>
                   </div>
-                  <div className="glass-panel p-8 rounded-3xl relative overflow-hidden border border-white/5 bg-surface-container-low">
+                  <div className="glass-panel p-8 rounded-3xl relative overflow-hidden border border-slate-200 dark:border-white/5 bg-surface-container-low">
                     <div className="font-body-lg text-body-lg text-on-surface-variant space-y-6 leading-relaxed"
                          dangerouslySetInnerHTML={{ __html: parseMarkdown(turn.answer) }}
                     />
@@ -602,7 +602,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               {/* Currently Streaming Turn */}
               {(isLoading || streamingText) && (
                 <div className="flex flex-col gap-6">
-                  <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/5 pb-4">
                     <div>
                       <span className="text-xs font-bold text-primary uppercase tracking-wider">Active Query</span>
                       <h2 className="text-xl font-bold text-on-surface mt-0.5">{activeQuery}</h2>
@@ -622,7 +622,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
                   {/* Streaming Text Content */}
                   {streamingText ? (
-                    <div className="glass-panel p-8 rounded-3xl relative overflow-hidden border border-white/5">
+                    <div className="glass-panel p-8 rounded-3xl relative overflow-hidden border border-slate-200 dark:border-white/5">
                       <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary-container/10 rounded-full blur-3xl"></div>
                       <div className={`font-body-lg text-body-lg text-on-surface-variant space-y-6 leading-relaxed ${isLoading ? 'typing-cursor' : ''}`}
                            dangerouslySetInnerHTML={{ __html: parseMarkdown(streamingText) }}
@@ -701,7 +701,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
               {/* Post-Answer Actions */}
               {streamingText && !isLoading && (
-                <div className="flex flex-wrap items-center gap-4 mt-8 pt-8 border-t border-white/5">
+                <div className="flex flex-wrap items-center gap-4 mt-8 pt-8 border-t border-slate-200 dark:border-white/5">
                   <button
                     onClick={handleCopyText}
                     className="text-xs font-bold bg-surface-variant hover:bg-surface-bright text-on-surface py-2.5 px-5 rounded-xl flex items-center gap-2 transition-all active:scale-95 border border-white/5 cursor-pointer"
@@ -834,7 +834,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
             <div className="w-full max-w-3xl mx-auto">
               <form 
                 onSubmit={handleSubmit}
-                className="relative flex items-center w-full bg-surface-container rounded-[32px] p-2.5 shadow-lg border border-white/5 focus-within:ring-2 focus-within:ring-primary/50 transition-all"
+                className="relative flex items-center w-full bg-surface-container rounded-[32px] p-2.5 shadow-lg border border-slate-300 dark:border-white/10 focus-within:ring-2 focus-within:ring-primary/50 transition-all"
               >
                  <input
                   type="text"
@@ -847,12 +847,12 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                   <button 
                     type="button" 
                     onClick={onToggleListen}
-                    className={`p-3 transition-colors rounded-full hover:bg-surface-variant/30 ${
+                    className={`p-3 transition-colors rounded-full hover:bg-surface-variant/30 cursor-pointer ${
                       isListening ? 'text-error bg-error/15 animate-pulse' : 'text-on-surface-variant hover:text-primary'
                     }`}
                     title={isListening ? "Listening... click to stop" : "Start voice input"}
                   >
-                    <span className="material-symbols-outlined">mic</span>
+                    <Mic className="w-5 h-5" />
                   </button>
                   <button
                     type="submit"
