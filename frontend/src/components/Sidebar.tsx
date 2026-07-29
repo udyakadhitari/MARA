@@ -90,20 +90,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* Mobile Backdrop Blur Overlay */}
-      {isMobileOpen && (
-        <div 
-          onClick={onCloseMobile}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-45 md:hidden animate-fadeIn"
-        />
-      )}
+      <div 
+        onClick={onCloseMobile}
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-45 md:hidden transition-opacity duration-300 ease-in-out ${
+          isMobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+      />
 
       <nav 
-        className={`bg-surface-dim/95 backdrop-blur-xl h-screen fixed left-0 top-0 border-r border-white/5 flex flex-col z-50 transition-all duration-300 ease-in-out ${
+        className={`bg-surface-dim/95 backdrop-blur-xl h-screen fixed left-0 top-0 border-r border-white/5 flex flex-col z-50 sidebar-drawer-slide ${
           isResizing ? 'select-none' : ''
         } ${
-          isMobileOpen 
-            ? 'translate-x-0 w-[280px] max-w-[85vw] p-4 shadow-2xl' 
-            : '-translate-x-full md:translate-x-0'
+          isMobileView
+            ? (isMobileOpen ? 'translate-x-0 w-[280px] max-w-[85vw] p-4 shadow-[0_0_50px_rgba(0,0,0,0.5)]' : '-translate-x-full pointer-events-none')
+            : 'translate-x-0 pointer-events-auto'
         }`}
         style={{ 
           width: !isMobileView ? (isCollapsed ? 72 : sidebarWidth) : undefined, 
