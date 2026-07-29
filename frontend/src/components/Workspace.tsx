@@ -885,8 +885,17 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     </div>
 
       {isProfileOpen && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-[100] p-6 animate-fadeIn">
-          <div className="bg-surface-container-low border border-white/10 w-full max-w-md rounded-[32px] overflow-hidden shadow-2xl flex flex-col p-6 text-on-surface">
+        <div 
+          onClick={() => setIsProfileOpen(false)}
+          className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-end sm:items-center justify-center z-[100] p-0 sm:p-6 animate-fadeIn"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-surface-container-low border border-white/10 w-full max-w-md rounded-t-[32px] sm:rounded-[32px] overflow-hidden shadow-2xl flex flex-col p-5 sm:p-6 text-on-surface animate-modalSlideUp sm:animate-modalScaleIn max-h-[88vh] sm:max-h-[90vh] overflow-y-auto"
+          >
+            {/* Mobile Handle Drag Indicator */}
+            <div className="w-12 h-1 bg-on-surface-variant/30 rounded-full mx-auto mb-4 sm:hidden flex-shrink-0" />
+
             {/* Header */}
             <div className="flex justify-between items-center pb-4 border-b border-white/5 mb-6">
               <h3 className="text-lg font-bold text-primary flex items-center gap-2">
