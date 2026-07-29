@@ -91,7 +91,14 @@ def get_db_connection():
             return psycopg2.connect(db_url, cursor_factory=RealDictCursor, connect_timeout=3)
         except Exception as e:
             print(f"[DB WARN] PostgreSQL unreachable ({e}). Using local SQLite fallback.")
-    db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "mara_memory.db"))
+    
+    # In Vercel or read-only serverless environment, use /tmp for writable SQLite db
+    db_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    if os.getenv("VERCEL") or not os.access(db_dir, os.W_OK):
+        db_path = "/tmp/mara_memory.db"
+    else:
+        db_path = os.path.join(db_dir, "mara_memory.db")
+        
     conn = sqlite3.connect(db_path, timeout=30.0)
     conn.row_factory = sqlite3.Row
     _init_sqlite_tables(conn)

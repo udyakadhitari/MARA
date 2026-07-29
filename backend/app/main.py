@@ -29,11 +29,11 @@ app = FastAPI(title="MARA Backend Server", version="1.0.0")
 
 # 1. CORS origin locking (CORS Hardening)
 frontend_url = os.getenv("FRONTEND_URL")
-allowed_origins = [frontend_url] if frontend_url else ["http://localhost:5173", "http://127.0.0.1:5173"]
+allowed_origins = ["*"] if not frontend_url else [frontend_url, "http://localhost:5173", "http://127.0.0.1:5173"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -81,11 +81,15 @@ SYSTEM_SETTINGS = {
 # =====================================================================
 # Logger Helper
 # =====================================================================
+def get_storage_path(subpath: str) -> str:
+    if os.getenv("VERCEL") or not os.access(ROOT_DIR, os.W_OK):
+        path = os.path.join("/tmp", subpath)
+    else:
+        path = os.path.join(ROOT_DIR, "backend", subpath)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    return path
+
 def log_query(task_id: str, query: str, status: str):
-    log_file = os.path.join(ROOT_DIR, "backend", "query_logs.jsonl")
-    # Ensure backend dir exists
-    os.makedirs(os.path.dirname(log_file), exist_ok=True)
-    
     now = datetime.datetime.now()
     log_entry = {
         "task_id": task_id,
@@ -98,6 +102,7 @@ def log_query(task_id: str, query: str, status: str):
     }
     
     try:
+        log_file = get_storage_path("query_logs.jsonl")
         with open(log_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(log_entry) + "\n")
     except Exception as e:
@@ -271,10 +276,12 @@ async def stream_research(task_id: str):
 
 
             # Write final trace file for observability
-            trace_dir = os.path.join(ROOT_DIR, "backend", "traces")
-            os.makedirs(trace_dir, exist_ok=True)
-            with open(os.path.join(trace_dir, f"{task_id}.json"), "w", encoding="utf-8") as f:
-                f.write(json.dumps(run_trace, indent=2))
+            try:
+                trace_file = get_storage_path(os.path.join("traces", f"{task_id}.json"))
+                with open(trace_file, "w", encoding="utf-8") as f:
+                    f.write(json.dumps(run_trace, indent=2))
+            except Exception as tr_err:
+                print(f"Trace write failed: {tr_err}")
 
             # Log final success status
             log_query(task_id, query, "COMPLETED")
@@ -286,10 +293,12 @@ async def stream_research(task_id: str):
             
             # Write failed trace
             run_trace["error"] = str(e)
-            trace_dir = os.path.join(ROOT_DIR, "backend", "traces")
-            os.makedirs(trace_dir, exist_ok=True)
-            with open(os.path.join(trace_dir, f"{task_id}.json"), "w", encoding="utf-8") as f:
-                f.write(json.dumps(run_trace, indent=2))
+            try:
+                trace_file = get_storage_path(os.path.join("traces", f"{task_id}.json"))
+                with open(trace_file, "w", encoding="utf-8") as f:
+                    f.write(json.dumps(run_trace, indent=2))
+            except Exception as tr_err:
+                print(f"Trace write failed: {tr_err}")
                 
             yield f"event: error\ndata: {json.dumps({'message': f'Execution failed: {str(e)}'})}\n\n"
 
@@ -298,7 +307,7 @@ async def stream_research(task_id: str):
 
 @app.get("/api/research/history")
 async def get_history():
-    log_file = os.path.join(ROOT_DIR, "backend", "query_logs.jsonl")
+    log_file = get_storage_path("query_logs.jsonl")
     if not os.path.exists(log_file):
         return []
         
@@ -357,9 +366,9 @@ async def verify_openai_key(req: VerifyKeyRequest):
 
 @app.get("/api/research/trace/{task_id}")
 async def get_run_trace(task_id: str):
-    trace_file = os.path.join(ROOT_DIR, "backend", "traces", f"{task_id}.json")
+    trace_file = get_storage_path(os.path.join("traces", f"{task_id}.json"))
     if not os.path.exists(trace_file):
-        raise HTTPException(status_code=404, detail="Trace for task ID not found.")
+        return {"status": "NOT_FOUND", "message": "Trace for task ID not found."}
     try:
         with open(trace_file, "r", encoding="utf-8") as f:
             return json.load(f)
