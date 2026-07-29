@@ -40,7 +40,9 @@ pandas
 # OpenAI SDK
 openai
 
-# Web Framework & Database
+# Web Framework, Auth & Database
 fastapi
 uvicorn
 psycopg2-binary
+PyJWT
+cryptography
