@@ -92,7 +92,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Mobile Backdrop Blur Overlay */}
       <div 
         onClick={onCloseMobile}
-        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-45 md:hidden transition-opacity duration-300 ease-in-out ${
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-45 md:hidden transition-opacity duration-500 ease-in-out ${
           isMobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       />
