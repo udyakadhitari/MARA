@@ -97,7 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Mobile Backdrop Blur Overlay */}
       <div 
         onClick={onCloseMobile}
-        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-45 md:hidden transition-opacity duration-700 ease-in-out ${
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-45 md:hidden transition-opacity duration-500 ease-in-out ${
           isMobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       />
@@ -107,13 +107,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
           isResizing ? 'select-none' : ''
         } ${
           !isDesktop
-            ? `w-[280px] max-w-[85vw] p-4 shadow-[0_0_50px_rgba(0,0,0,0.5)] ${
+            ? `sidebar-drawer-slide w-[280px] max-w-[85vw] p-4 shadow-[0_0_50px_rgba(0,0,0,0.5)] ${
                 isMobileOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full pointer-events-none'
               }`
             : 'translate-x-0 pointer-events-auto'
         }`}
         style={{ 
-          transition: !isDesktop ? 'transform 800ms cubic-bezier(0.16, 1, 0.3, 1)' : (isResizing ? 'none' : 'width 300ms ease-in-out, padding 300ms ease-in-out'),
+          transition: !isDesktop 
+            ? 'transform 500ms cubic-bezier(0.16, 1, 0.3, 1), translate 500ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 500ms ease' 
+            : (isResizing ? 'none' : 'width 300ms ease-in-out, padding 300ms ease-in-out'),
           width: isDesktop ? (isCollapsed ? 72 : sidebarWidth) : undefined, 
           padding: isDesktop ? (isCollapsed ? '8px' : '16px') : undefined 
         }}

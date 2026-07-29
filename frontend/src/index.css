@@ -234,8 +234,9 @@ html, body, nav, header, main, aside, div, button, input, form, p, span, h1, h2,
 
 /* Sidebar Mobile Drawer Slide Animation */
 .sidebar-drawer-slide {
-    transition: transform 0.52s cubic-bezier(0.22, 1, 0.36, 1), 
-                width 0.45s cubic-bezier(0.22, 1, 0.36, 1), 
-                padding 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-                box-shadow 0.52s ease-out;
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), 
+                translate 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                width 0.3s ease-in-out, 
+                padding 0.3s ease-in-out,
+                box-shadow 0.5s ease;
 }
