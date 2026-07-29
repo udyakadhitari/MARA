@@ -47,6 +47,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [menuPosition, setMenuPosition] = useState<{ x: number, y: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const [isMobileView, setIsMobileView] = useState<boolean>(() => {
+    return typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (activeMenuSessionId && menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -93,8 +106,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             : '-translate-x-full md:translate-x-0'
         }`}
         style={{ 
-          width: window.innerWidth >= 768 ? (isCollapsed ? 72 : sidebarWidth) : undefined, 
-          padding: window.innerWidth >= 768 ? (isCollapsed ? '8px' : '16px') : '16px' 
+          width: !isMobileView ? (isCollapsed ? 72 : sidebarWidth) : undefined, 
+          padding: !isMobileView ? (isCollapsed ? '8px' : '16px') : '16px' 
         }}
       >
         {/* Drag Resize Handle (only active on desktop when expanded) */}

@@ -109,7 +109,19 @@ function App() {
   };
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
+  const [isMobileView, setIsMobileView] = useState<boolean>(() => {
+    return typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+  });
   const [sidebarWidth, setSidebarWidth] = useState<number>(300);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [isResizing, setIsResizing] = useState<boolean>(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('workspace');
@@ -806,7 +818,7 @@ function App() {
       {/* Main Workspace Layout Wrapper */}
       <div 
         className={`flex-grow flex h-full overflow-hidden ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
-        style={{ paddingLeft: window.innerWidth >= 768 ? (isSidebarCollapsed ? 72 : sidebarWidth) : 0 }}
+        style={{ paddingLeft: isMobileView ? 0 : (isSidebarCollapsed ? 72 : sidebarWidth) }}
       >
         {activeTab === 'workspace' && (
           <Workspace
