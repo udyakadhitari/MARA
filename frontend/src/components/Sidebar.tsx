@@ -19,6 +19,8 @@ interface SidebarProps {
   onPinSession: (sid: string) => void;
   onRenameSession: (sid: string) => void;
   onDeleteSession: (sid: string) => void;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -37,7 +39,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   pinnedSessions,
   onPinSession,
   onRenameSession,
-  onDeleteSession
+  onDeleteSession,
+  isMobileOpen = false,
+  onCloseMobile
 }) => {
   const [activeMenuSessionId, setActiveMenuSessionId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ x: number, y: number } | null>(null);
@@ -71,18 +75,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
   });
 
   return (
-    <nav 
-      className={`bg-surface-dim/95 backdrop-blur-xl h-screen fixed left-0 top-0 border-r border-white/5 flex flex-col z-50 ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
-      style={{ width: isCollapsed ? 72 : sidebarWidth, padding: isCollapsed ? '8px' : '16px' }}
-    >
-      {/* Drag Resize Handle (only active when expanded) */}
-      {!isCollapsed && (
+    <>
+      {/* Mobile Backdrop Blur Overlay */}
+      {isMobileOpen && (
         <div 
-          onMouseDown={onResizeStart}
-          className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/50 transition-colors select-none z-50"
-          title="Drag to resize sidebar"
+          onClick={onCloseMobile}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-45 md:hidden animate-fadeIn"
         />
       )}
+
+      <nav 
+        className={`bg-surface-dim/95 backdrop-blur-xl h-screen fixed left-0 top-0 border-r border-white/5 flex flex-col z-50 transition-all duration-300 ease-in-out ${
+          isResizing ? 'select-none' : ''
+        } ${
+          isMobileOpen 
+            ? 'translate-x-0 w-[280px] max-w-[85vw] p-4 shadow-2xl' 
+            : '-translate-x-full md:translate-x-0'
+        }`}
+        style={{ 
+          width: window.innerWidth >= 768 ? (isCollapsed ? 72 : sidebarWidth) : undefined, 
+          padding: window.innerWidth >= 768 ? (isCollapsed ? '8px' : '16px') : '16px' 
+        }}
+      >
+        {/* Drag Resize Handle (only active on desktop when expanded) */}
+        {!isCollapsed && (
+          <div 
+            onMouseDown={onResizeStart}
+            className="hidden md:block absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/50 transition-colors select-none z-50"
+            title="Drag to resize sidebar"
+          />
+        )}
 
       {/* Header / Branding */}
       <div className={`flex items-center justify-between mb-8 ${isCollapsed ? 'flex-col gap-4' : ''}`}>
@@ -111,7 +133,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="flex flex-col gap-2">
         {/* New Research CTA */}
         <button
-          onClick={onNewResearch}
+          onClick={() => {
+            onNewResearch();
+            onCloseMobile?.();
+          }}
           className={`flex items-center gap-3 text-on-surface bg-surface-variant/20 hover:bg-surface-variant/40 active:scale-[0.98] rounded-2xl cursor-pointer transition-all mb-4 text-left font-semibold border border-white/5 ${
             isCollapsed ? 'p-3 justify-center' : 'p-3.5'
           }`}
@@ -123,7 +148,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Tab Items */}
         <button
-          onClick={() => setActiveTab('workspace')}
+          onClick={() => {
+            setActiveTab('workspace');
+            onCloseMobile?.();
+          }}
           className={`flex items-center gap-3 p-3 rounded-2xl transition-all text-left font-medium active:scale-[0.98] cursor-pointer ${
             activeTab === 'workspace'
               ? 'text-primary bg-primary-container/20 border border-primary/10 shadow-[0_0_12px_rgba(75,142,255,0.05)]'
@@ -168,7 +196,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               return (
                 <div key={session.session_id} className="relative group w-full flex items-center">
                   <button
-                    onClick={() => onSelectSession(session.session_id)}
+                    onClick={() => {
+                      onSelectSession(session.session_id);
+                      onCloseMobile?.();
+                    }}
                     className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all text-left cursor-pointer active:scale-[0.99] border border-solid ${
                       isCollapsed ? 'justify-center' : 'pr-10'
                     } ${
@@ -256,6 +287,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       )}
     </nav>
+  </>
   );
 };
 

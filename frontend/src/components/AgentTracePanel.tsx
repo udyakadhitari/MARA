@@ -28,9 +28,18 @@ export const AgentTracePanel: React.FC<AgentTracePanelProps> = ({
   };
 
   return (
-    <aside className={`w-[340px] bg-surface-container-low flex flex-col h-full flex-shrink-0 relative z-10 shadow-2xl border-l border-white/5 transition-all duration-300 ease-in-out ${
-      isOpen ? 'translate-x-0 opacity-100' : 'translate-x-full -mr-[340px] opacity-0 pointer-events-none'
-    }`}>
+    <>
+      {/* Mobile Backdrop Overlay when Agent Trace is open */}
+      {isOpen && (
+        <div
+          onClick={onClose}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-45 md:hidden animate-fadeIn"
+        />
+      )}
+
+      <aside className={`fixed md:relative right-0 top-0 w-full sm:w-[340px] md:w-[340px] bg-surface-container-low flex flex-col h-full flex-shrink-0 z-50 md:z-10 shadow-2xl border-l border-white/5 transition-all duration-300 ease-in-out ${
+        isOpen ? 'translate-x-0 opacity-100' : 'translate-x-full md:translate-x-full md:-mr-[340px] opacity-0 pointer-events-none'
+      }`}>
       {/* Header */}
       <div className="p-6 pb-4 flex justify-between items-center bg-surface-container-low">
         <h3 className="font-headline-sm text-headline-sm font-bold text-on-surface flex items-center gap-2">
@@ -137,6 +146,7 @@ export const AgentTracePanel: React.FC<AgentTracePanelProps> = ({
         </div>
       </div>
     </aside>
+  </>
   );
 };
 export default AgentTracePanel;

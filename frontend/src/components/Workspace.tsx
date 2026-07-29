@@ -218,7 +218,7 @@ import {
   Search, Mic, ArrowUp, Sparkles, Activity, Copy, Download, Printer, 
   RotateCw, ShieldCheck, HelpCircle, ArrowRight, 
   BatteryCharging, TrendingUp, X, LogOut, User as UserIcon, 
-  Settings, AlertTriangle, Brain, Loader2, Sun, Moon
+  Settings, AlertTriangle, Brain, Loader2, Sun, Moon, Menu
 } from 'lucide-react';
 import emblemImg from '../assets/emblem_clean.png';
 import logoCleanImg from '../assets/logo_clean.png';
@@ -245,6 +245,7 @@ interface WorkspaceProps {
   onViewTrace: () => void;
   activeTaskId: string | null;
   chatHistory: ChatTurn[];
+  onOpenMobileSidebar?: () => void;
 }
 
 export const Workspace: React.FC<WorkspaceProps> = ({
@@ -268,7 +269,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   onExportPDF,
   onViewTrace,
   activeTaskId,
-  chatHistory
+  chatHistory,
+  onOpenMobileSidebar
 }) => {
   const { user } = useUser();
   const { openUserProfile, signOut } = useClerk();
@@ -349,15 +351,24 @@ export const Workspace: React.FC<WorkspaceProps> = ({
     <>
       <div className="flex-grow flex flex-col h-screen overflow-hidden bg-surface-container-lowest relative">
       {/* Top App Bar Header */}
-      <header className="bg-background/80 backdrop-blur-md border-b border-slate-200 dark:border-white/5 flex justify-between items-center h-16 px-gutter w-full z-40 shrink-0">
-        <div className="flex items-center gap-3">
+      <header className="bg-background/80 backdrop-blur-md border-b border-slate-200 dark:border-white/5 flex justify-between items-center h-16 px-3 sm:px-6 w-full z-40 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {onOpenMobileSidebar && (
+            <button
+              onClick={onOpenMobileSidebar}
+              className="md:hidden p-2 text-on-surface-variant hover:text-on-surface rounded-xl hover:bg-surface-variant/30 active:scale-95 cursor-pointer flex items-center justify-center"
+              title="Open Navigation"
+            >
+              <Menu className="w-5 h-5 text-primary" />
+            </button>
+          )}
           <img src={emblemImg} alt="MARA Emblem" className="w-7 h-7 object-contain flex-shrink-0" />
-          <span className="font-headline-sm text-lg tracking-widest text-primary font-extrabold leading-none">
+          <span className="font-headline-sm text-base sm:text-lg tracking-widest text-primary font-extrabold leading-none">
             MARA
           </span>
         </div>
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3 pl-6">
+        <div className="flex items-center gap-2 sm:gap-6">
+          <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-6">
             <button 
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="p-2 text-on-surface-variant hover:text-primary transition-all rounded-lg border border-white/5 hover:bg-surface-variant/30 active:scale-90 cursor-pointer flex items-center justify-center group"
@@ -371,7 +382,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
             </button>
             <button 
               onClick={onToggleTrace}
-              className={`text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer ${
+              className={`text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border cursor-pointer ${
                 isTraceOpen ? 'border-primary/30 bg-primary/10 text-primary' : 'border-white/5 hover:bg-surface-variant/30'
               }`}
             >
@@ -392,13 +403,13 @@ export const Workspace: React.FC<WorkspaceProps> = ({
       <main className="flex-grow overflow-hidden flex flex-col relative">
         {!activeQuery ? (
           /* Landing/Welcome View (Empty State) */
-          <div className="flex-grow overflow-y-auto p-container-padding flex flex-col items-center justify-center max-w-3xl mx-auto w-full pb-32">
-            <div className="text-center mb-8">
-              <img src={logoCleanImg} alt="MARA Logo" className="h-28 object-contain mx-auto mb-6 filter drop-shadow-[0_0_20px_rgba(75,142,255,0.35)] animate-pulse" />
-              <h2 className="font-headline-lg text-headline-lg font-bold text-on-surface mb-2">
+          <div className="flex-grow overflow-y-auto px-4 sm:px-8 py-6 flex flex-col items-center justify-center max-w-3xl mx-auto w-full pb-28 sm:pb-32">
+            <div className="text-center mb-6 sm:mb-8">
+              <img src={logoCleanImg} alt="MARA Logo" className="h-20 sm:h-28 object-contain mx-auto mb-4 sm:mb-6 filter drop-shadow-[0_0_20px_rgba(75,142,255,0.35)] animate-pulse" />
+              <h2 className="font-headline-lg text-xl sm:text-3xl font-bold text-on-surface mb-2 px-2">
                 What would you like to research today?
               </h2>
-              <p className="text-sm text-on-surface-variant max-w-lg mx-auto leading-relaxed">
+              <p className="text-xs sm:text-sm text-on-surface-variant max-w-lg mx-auto leading-relaxed px-2">
                 Enter your research topic. MARA will decompose your query, scrape academic and web sources, and synthesize verified findings.
               </p>
             </div>

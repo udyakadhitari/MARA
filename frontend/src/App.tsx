@@ -108,6 +108,7 @@ function App() {
     }
   };
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [sidebarWidth, setSidebarWidth] = useState<number>(300);
   const [isResizing, setIsResizing] = useState<boolean>(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState<boolean>(false);
@@ -798,12 +799,14 @@ function App() {
         onPinSession={handlePinSession}
         onRenameSession={handleRenameSession}
         onDeleteSession={handleDeleteSession}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
       {/* Main Workspace Layout Wrapper */}
       <div 
         className={`flex-grow flex h-full overflow-hidden ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
-        style={{ paddingLeft: isSidebarCollapsed ? 72 : sidebarWidth }}
+        style={{ paddingLeft: window.innerWidth >= 768 ? (isSidebarCollapsed ? 72 : sidebarWidth) : 0 }}
       >
         {activeTab === 'workspace' && (
           <Workspace
@@ -828,6 +831,7 @@ function App() {
             onViewTrace={handleViewTrace}
             activeTaskId={activeTaskId}
             chatHistory={chatHistory}
+            onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
           />
         )}
 
