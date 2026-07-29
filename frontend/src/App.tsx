@@ -109,18 +109,23 @@ function App() {
   };
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
-  const [isMobileView, setIsMobileView] = useState<boolean>(() => {
-    return typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+  const [isDesktop, setIsDesktop] = useState<boolean>(() => {
+    return typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)').matches : true;
   });
   const [sidebarWidth, setSidebarWidth] = useState<number>(300);
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobileView(window.innerWidth < 768);
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia('(min-width: 768px)');
+    const onChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    setIsDesktop(mql.matches);
+    if (mql.addEventListener) {
+      mql.addEventListener('change', onChange);
+      return () => mql.removeEventListener('change', onChange);
+    } else {
+      mql.addListener(onChange);
+      return () => mql.removeListener(onChange);
+    }
   }, []);
   const [isResizing, setIsResizing] = useState<boolean>(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState<boolean>(false);
@@ -818,7 +823,7 @@ function App() {
       {/* Main Workspace Layout Wrapper */}
       <div 
         className={`flex-grow flex h-full overflow-hidden ${isResizing ? '' : 'transition-all duration-300 ease-in-out'}`}
-        style={{ paddingLeft: isMobileView ? 0 : (isSidebarCollapsed ? 72 : sidebarWidth) }}
+        style={{ paddingLeft: isDesktop ? (isSidebarCollapsed ? 72 : sidebarWidth) : 0 }}
       >
         {activeTab === 'workspace' && (
           <Workspace

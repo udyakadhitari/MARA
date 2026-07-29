@@ -47,17 +47,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [menuPosition, setMenuPosition] = useState<{ x: number, y: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const [isMobileView, setIsMobileView] = useState<boolean>(() => {
-    return typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+  const [isDesktop, setIsDesktop] = useState<boolean>(() => {
+    return typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)').matches : true;
   });
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobileView(window.innerWidth < 768);
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia('(min-width: 768px)');
+    const onChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    setIsDesktop(mql.matches);
+    if (mql.addEventListener) {
+      mql.addEventListener('change', onChange);
+      return () => mql.removeEventListener('change', onChange);
+    } else {
+      mql.addListener(onChange);
+      return () => mql.removeListener(onChange);
+    }
   }, []);
 
   useEffect(() => {
@@ -101,16 +106,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
         className={`bg-surface-dim/95 backdrop-blur-xl h-screen fixed left-0 top-0 border-r border-white/5 flex flex-col z-50 will-change-transform ${
           isResizing ? 'select-none' : ''
         } ${
-          isMobileView
+          !isDesktop
             ? `w-[280px] max-w-[85vw] p-4 shadow-[0_0_50px_rgba(0,0,0,0.5)] ${
                 isMobileOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full pointer-events-none'
               }`
             : 'translate-x-0 pointer-events-auto'
         }`}
         style={{ 
-          transition: isMobileView ? 'transform 800ms cubic-bezier(0.16, 1, 0.3, 1)' : (isResizing ? 'none' : 'all 300ms ease-in-out'),
-          width: !isMobileView ? (isCollapsed ? 72 : sidebarWidth) : undefined, 
-          padding: !isMobileView ? (isCollapsed ? '8px' : '16px') : undefined 
+          transition: !isDesktop ? 'transform 800ms cubic-bezier(0.16, 1, 0.3, 1)' : (isResizing ? 'none' : 'width 300ms ease-in-out, padding 300ms ease-in-out'),
+          width: isDesktop ? (isCollapsed ? 72 : sidebarWidth) : undefined, 
+          padding: isDesktop ? (isCollapsed ? '8px' : '16px') : undefined 
         }}
       >
         {/* Drag Resize Handle (only active on desktop when expanded) */}
@@ -123,20 +128,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
 
       {/* Header / Branding */}
-      <div className={`flex items-center justify-between mb-8 ${!isMobileView && isCollapsed ? 'flex-col gap-4' : ''}`}>
+      <div className={`flex items-center justify-between mb-8 ${isDesktop && isCollapsed ? 'flex-col gap-4' : ''}`}>
         <div className="flex items-center gap-3 overflow-hidden min-w-0 h-8">
           <img
             src={emblemImg}
             alt="MARA Emblem"
             className="w-8 h-8 flex-shrink-0 object-contain"
           />
-          {(!isCollapsed || isMobileView) && (
+          {(!isCollapsed || !isDesktop) && (
             <div className="animate-fadeIn min-w-0 flex items-center h-8">
               <h1 className="font-headline-sm text-xl font-extrabold text-primary truncate tracking-widest leading-none my-auto">MARA</h1>
             </div>
           )}
         </div>
-        {isMobileView ? (
+        {!isDesktop ? (
           <button
             onClick={onCloseMobile}
             className="p-2 hover:bg-surface-variant/30 rounded-xl text-on-surface-variant hover:text-on-surface transition-all active:scale-95 flex-shrink-0 cursor-pointer"
@@ -164,12 +169,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onCloseMobile?.();
           }}
           className={`flex items-center gap-3 text-on-surface bg-surface-variant/20 hover:bg-surface-variant/40 active:scale-[0.98] rounded-2xl cursor-pointer transition-all mb-4 text-left font-semibold border border-white/5 ${
-            !isMobileView && isCollapsed ? 'p-3 justify-center' : 'p-3.5'
+            isDesktop && isCollapsed ? 'p-3 justify-center' : 'p-3.5'
           }`}
           title="New Research"
         >
           <SquarePlus className="w-5 h-5 text-primary flex-shrink-0" />
-          {(!isCollapsed || isMobileView) && <span className="animate-fadeIn truncate">New Research</span>}
+          {(!isCollapsed || !isDesktop) && <span className="animate-fadeIn truncate">New Research</span>}
         </button>
 
         {/* Tab Items */}
@@ -182,11 +187,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             activeTab === 'workspace'
               ? 'text-primary bg-primary-container/20 border border-primary/10 shadow-[0_0_12px_rgba(75,142,255,0.05)]'
               : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30'
-          } ${!isMobileView && isCollapsed ? 'justify-center' : ''}`}
+          } ${isDesktop && isCollapsed ? 'justify-center' : ''}`}
           title="Workspace"
         >
           <LayoutGrid className="w-5 h-5 flex-shrink-0" />
-          {(!isCollapsed || isMobileView) && <span className="animate-fadeIn truncate">Workspace</span>}
+          {(!isCollapsed || !isDesktop) && <span className="animate-fadeIn truncate">Workspace</span>}
         </button>
       </div>
 
@@ -195,14 +200,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* History Chat Thread Section */}
       <div className="flex-grow flex flex-col min-h-0">
-        {(!isCollapsed || isMobileView) && (
+        {(!isCollapsed || !isDesktop) && (
           <span className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest px-3 mb-3 block animate-fadeIn">
             Research History
           </span>
         )}
         <div className="flex-grow overflow-y-auto hide-scrollbar space-y-2 pr-1">
           {isHistoryLoading && sortedSessions.length === 0 ? (
-            (!isCollapsed || isMobileView) && (
+            (!isCollapsed || !isDesktop) && (
               <div className="space-y-2.5 animate-pulse px-2.5">
                 {[1, 2, 3, 4].map((n) => (
                   <div key={n} className="h-10 bg-white/5 rounded-xl w-full" />
@@ -210,7 +215,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             )
           ) : sortedSessions.length === 0 ? (
-            (!isCollapsed || isMobileView) && (
+            (!isCollapsed || !isDesktop) && (
               <div className="text-[11px] text-on-surface-variant/40 text-center py-4 border border-dashed border-white/5 rounded-xl animate-fadeIn">
                 No past sessions.
               </div>
@@ -227,7 +232,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       onCloseMobile?.();
                     }}
                     className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all text-left cursor-pointer active:scale-[0.99] border border-solid ${
-                      !isMobileView && isCollapsed ? 'justify-center' : 'pr-10'
+                      isDesktop && isCollapsed ? 'justify-center' : 'pr-10'
                     } ${
                       isSelected
                         ? 'bg-primary/10 border-primary/20 text-primary'
@@ -240,7 +245,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     ) : (
                       <MessageSquare className="w-4 h-4 flex-shrink-0 opacity-70" />
                     )}
-                    {(!isCollapsed || isMobileView) && (
+                    {(!isCollapsed || !isDesktop) && (
                       <div className="min-w-0 flex-grow animate-fadeIn">
                         <p className="text-xs font-semibold truncate leading-tight">
                           {session.running_summary || `Session (${session.session_id.substring(0, 8)})`}
