@@ -5,6 +5,7 @@ import Workspace, { convertMarkdownToPrintHtml } from './components/Workspace';
 import AgentTracePanel from './components/AgentTracePanel';
 import type { AgentStep } from './components/AgentTracePanel';
 import type { CitedSource } from './components/CitedSources';
+import { API_BASE_URL } from './config';
 
 const INITIAL_STEPS: AgentStep[] = [
   { id: 'step-orchestrator', agent: 'Orchestrator', message: 'Awaiting research query...', status: 'pending' },
@@ -63,7 +64,7 @@ function App() {
     if (newName && newName.trim() && newName.trim() !== currentName) {
       try {
         const token = await getToken();
-        const res = await fetch(`http://localhost:8000/api/sessions/${sid}`, {
+        const res = await fetch(`${API_BASE_URL}/api/sessions/${sid}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -88,7 +89,7 @@ function App() {
     if (confirm("Are you sure you want to delete this research session? This will remove all messages from this session.")) {
       try {
         const token = await getToken();
-        const res = await fetch(`http://localhost:8000/api/sessions/${sid}`, {
+        const res = await fetch(`${API_BASE_URL}/api/sessions/${sid}`, {
           method: 'DELETE',
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
@@ -307,7 +308,7 @@ function App() {
   const handleViewTrace = async () => {
     if (!activeTaskId) return;
     try {
-      const res = await fetch(`http://localhost:8000/api/research/trace/${activeTaskId}`);
+      const res = await fetch(`${API_BASE_URL}/api/research/trace/${activeTaskId}`);
       if (res.ok) {
         const data = await res.json();
         setRunTrace(data);
@@ -322,7 +323,7 @@ function App() {
 
   const fetchFollowUpsSeparately = async (queryText: string, answerText: string) => {
     try {
-      const res = await fetch('http://localhost:8000/api/research/follow-ups', {
+      const res = await fetch(`${API_BASE_URL}/api/research/follow-ups`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -351,7 +352,7 @@ function App() {
           await new Promise(resolve => setTimeout(resolve, 1000));
           continue;
         }
-        const res = await fetch('http://localhost:8000/api/sessions', {
+        const res = await fetch(`${API_BASE_URL}/api/sessions`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!res.ok) {
@@ -387,7 +388,7 @@ function App() {
           await new Promise(resolve => setTimeout(resolve, 1000));
           continue;
         }
-        const res = await fetch(`http://localhost:8000/api/sessions/${sid}/messages`, {
+        const res = await fetch(`${API_BASE_URL}/api/sessions/${sid}/messages`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!res.ok) {
@@ -476,7 +477,7 @@ function App() {
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/settings');
+      const res = await fetch(`${API_BASE_URL}/api/settings`);
       if (res.ok) {
         const data = await res.json();
         setSettings({
@@ -531,7 +532,7 @@ function App() {
     try {
       // 1. Get auth token and submit query to start research task
       const token = await getToken();
-      const response = await fetch('http://localhost:8000/api/research/run', {
+      const response = await fetch(`${API_BASE_URL}/api/research/run`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -562,7 +563,7 @@ function App() {
       fetchSessions(5, false);
 
       // 2. Open EventSource for SSE streaming
-      const eventSource = new EventSource(`http://localhost:8000/api/research/stream/${taskId}`);
+      const eventSource = new EventSource(`${API_BASE_URL}/api/research/stream/${taskId}`);
 
       eventSource.addEventListener('orchestrator-done', (event) => {
         try {

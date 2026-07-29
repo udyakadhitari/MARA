@@ -223,6 +223,7 @@ import {
 } from 'lucide-react';
 import emblemImg from '../assets/emblem_clean.png';
 import logoCleanImg from '../assets/logo_clean.png';
+import { API_BASE_URL } from '../config';
 
 interface WorkspaceProps {
   activeQuery: string | null;
@@ -1120,7 +1121,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
                     setIsTestingKey(true);
                     setKeyTestResult(null);
                     try {
-                      const res = await fetch('http://localhost:8000/api/settings/verify-key', {
+                      const res = await fetch(`${API_BASE_URL}/api/settings/verify-key`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ openai_api_key: apiKeyInput.trim() })

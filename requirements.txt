@@ -39,3 +39,8 @@ pandas
 
 # OpenAI SDK
 openai
+
+# Web Framework & Database
+fastapi
+uvicorn
+psycopg2-binary
