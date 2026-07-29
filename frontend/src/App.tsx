@@ -325,7 +325,11 @@ function App() {
       const res = await fetch('http://localhost:8000/api/research/follow-ups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: queryText, answer: answerText })
+        body: JSON.stringify({ 
+          query: queryText, 
+          answer: answerText,
+          openai_api_key: localStorage.getItem('mara_openai_api_key') || null
+        })
       });
       if (res.ok) {
         const data = await res.json();
@@ -533,7 +537,12 @@ function App() {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ query, session_id: sessionId || null, user_id: clerkUserId || null })
+        body: JSON.stringify({ 
+          query, 
+          session_id: sessionId || null, 
+          user_id: clerkUserId || null,
+          openai_api_key: localStorage.getItem('mara_openai_api_key') || null
+        })
       });
 
       if (!response.ok) {

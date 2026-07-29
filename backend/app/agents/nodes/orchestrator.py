@@ -8,7 +8,7 @@ def orchestrator_node(state: AgentState) -> Dict[str, Any]:
     print("\n--- [Orchestrator Node] Decomposing Query ---")
     original_query = state["original_query"]
     
-    llm = get_openai_client()
+    llm = get_openai_client(state.get("openai_api_key"))
     structured_llm = llm.with_structured_output(DecomposedQueries)
     
     memory_context = state.get("memory_context")

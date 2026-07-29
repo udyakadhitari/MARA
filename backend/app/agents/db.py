@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from openai import OpenAI
@@ -96,12 +97,12 @@ def get_db_connection():
     _init_sqlite_tables(conn)
     return SQLiteConnectionWrapper(conn)
 
-def get_embedding(text: str) -> list[float]:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY environment variable is not set!")
+def get_embedding(text: str, api_key: Optional[str] = None) -> list[float]:
+    key = api_key or os.getenv("OPENAI_API_KEY")
+    if not key:
+        raise ValueError("OPENAI_API_KEY environment variable is not set and no custom API key was provided!")
     
-    client = OpenAI(api_key=api_key)
+    client = OpenAI(api_key=key)
     response = client.embeddings.create(
         input=[text],
         model="text-embedding-3-small"

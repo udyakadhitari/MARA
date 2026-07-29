@@ -30,7 +30,7 @@ def critic_node(state: AgentState) -> Dict[str, Any]:
         )
     claims_context = "\n\n".join(formatted_claims)
     
-    llm = get_openai_client()
+    llm = get_openai_client(state.get("openai_api_key"))
     structured_llm = llm.with_structured_output(CriticVerdictModel)
     
     system_prompt = (

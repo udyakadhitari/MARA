@@ -29,7 +29,7 @@ def drafter_node(state: AgentState) -> Dict[str, Any]:
             
     context = "\n\n".join(context_blocks)
     
-    llm = get_openai_client()
+    llm = get_openai_client(state.get("openai_api_key"))
     structured_llm = llm.with_structured_output(SynthesizedAnswerModel)
     
     system_prompt = (
@@ -98,7 +98,7 @@ def synthesizer_node(state: AgentState) -> Dict[str, Any]:
     confidence = state.get("confidence", 0.0)
     follow_up_questions = state.get("follow_up_questions", [])
     
-    llm = get_openai_client()
+    llm = get_openai_client(state.get("openai_api_key"))
     
     system_prompt = (
         "You are an expert technical editor. Your job is to format the given research report "

@@ -110,15 +110,20 @@ class ResearchRequest(BaseModel):
     query: str
     session_id: Optional[str] = None
     user_id: Optional[str] = None  # Clerk user_id passed from frontend
+    openai_api_key: Optional[str] = None
 
 class SettingsUpdate(BaseModel):
     default_model: str
     temperature: float
     search_depth: str
 
+class VerifyKeyRequest(BaseModel):
+    openai_api_key: str
+
 class FollowUpsRequest(BaseModel):
     query: str
     answer: str
+    openai_api_key: Optional[str] = None
 
 class SessionUpdate(BaseModel):
     running_summary: str
@@ -147,7 +152,8 @@ async def run_research(
     ACTIVE_TASKS[task_id] = {
         "query": query_text,
         "session_id": session_id,
-        "user_id": user_id
+        "user_id": user_id,
+        "openai_api_key": request.openai_api_key
     }
     
     # Log task registration
@@ -171,6 +177,7 @@ async def stream_research(task_id: str):
     query = task_info["query"]
     session_id = task_info["session_id"]
     user_id = task_info.get("user_id", "anonymous")
+    openai_api_key = task_info.get("openai_api_key")
     
     async def sse_generator():
         print(f"SSE: Starting stream for task {task_id} with query: '{query}'")
@@ -192,7 +199,8 @@ async def stream_research(task_id: str):
             "follow_up_questions": [],
             "session_id": session_id,
             "user_id": user_id,
-            "memory_context": ""
+            "memory_context": "",
+            "openai_api_key": openai_api_key
         }
         
         run_trace = {
@@ -336,6 +344,16 @@ async def update_settings(update: SettingsUpdate):
         "status": "SETTINGS_UPDATED",
         "settings": SYSTEM_SETTINGS
     }
+
+@app.post("/api/settings/verify-key")
+async def verify_openai_key(req: VerifyKeyRequest):
+    try:
+        from langchain_openai import ChatOpenAI
+        client = ChatOpenAI(model="gpt-4o-mini", api_key=req.openai_api_key, max_tokens=5, timeout=10.0)
+        res = client.invoke("Hi")
+        return {"valid": True, "message": "OpenAI API key verified successfully!"}
+    except Exception as e:
+        return {"valid": False, "message": f"Invalid API key: {str(e)}"}
 
 @app.get("/api/research/trace/{task_id}")
 async def get_run_trace(task_id: str):
@@ -538,7 +556,7 @@ async def generate_follow_ups(req: FollowUpsRequest):
     try:
         from langchain_core.messages import SystemMessage, HumanMessage
         from backend.app.agents.utils import get_openai_client
-        llm = get_openai_client()
+        llm = get_openai_client(req.openai_api_key)
         
         system_prompt = (
             "You are a helpful research assistant. Based on the following research query and synthesized report, "

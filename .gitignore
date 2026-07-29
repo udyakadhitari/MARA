@@ -27,6 +27,8 @@ dist/
 # Logs & temp files
 *.log
 logs/
+*.db
+*.jsonl
 backend/traces/
 backend/app/traces/
 C:/Users/udyak/.gemini/antigravity-ide/

@@ -46,7 +46,7 @@ def memory_retrieval_node(state: AgentState) -> Dict[str, Any]:
         # 3. Long-term RAG memory (using pgvector similarity matching)
         rag_context = ""
         try:
-            query_embedding = get_embedding(original_query)
+            query_embedding = get_embedding(original_query, api_key=state.get("openai_api_key"))
             
             if sliding_window_ids:
                 # Exclude turns already covered in the sliding window
@@ -157,7 +157,7 @@ def memory_write_node(state: AgentState) -> Dict[str, Any]:
         # 5. Embed Turn (Query + Answer combined) & Save
         try:
             combined_text = f"Query: {original_query}\nAnswer: {draft_answer}"
-            embedding = get_embedding(combined_text)
+            embedding = get_embedding(combined_text, api_key=state.get("openai_api_key"))
             
             cur.execute(
                 "insert into message_embeddings (message_id, embedding) "
@@ -186,7 +186,7 @@ def memory_write_node(state: AgentState) -> Dict[str, Any]:
                 for idx, row in enumerate(history_rows):
                     formatted_history += f"Turn {idx+1}:\nUser: {row['query_text']}\nAgent: {row['answer_text']}\n\n"
                     
-                llm = get_openai_client()
+                llm = get_openai_client(state.get("openai_api_key"))
                 prompt = (
                     "You are a conversation logging assistant. Please update the summary "
                     "of this research session. Synthesize the key topics explored, findings, "

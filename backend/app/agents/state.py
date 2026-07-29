@@ -19,3 +19,4 @@ class AgentState(TypedDict):
     session_id: str
     user_id: str           # Clerk user_id — identifies who made the request
     memory_context: str
+    openai_api_key: Optional[str]

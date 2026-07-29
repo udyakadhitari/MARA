@@ -218,7 +218,8 @@ import {
   Search, Mic, ArrowUp, Sparkles, Activity, Copy, Download, Printer, 
   RotateCw, ShieldCheck, HelpCircle, ArrowRight, 
   BatteryCharging, TrendingUp, X, LogOut, User as UserIcon, 
-  Settings, AlertTriangle, Brain, Loader2, Sun, Moon, Menu
+  Settings, AlertTriangle, Brain, Loader2, Sun, Moon, Menu,
+  Key, Eye, EyeOff, Check, Trash2
 } from 'lucide-react';
 import emblemImg from '../assets/emblem_clean.png';
 import logoCleanImg from '../assets/logo_clean.png';
@@ -275,9 +276,22 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const { user } = useUser();
   const { openUserProfile, signOut } = useClerk();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [userApiKey, setUserApiKey] = useState<string>(() => localStorage.getItem('mara_openai_api_key') || '');
+  const [apiKeyInput, setApiKeyInput] = useState<string>('');
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [isTestingKey, setIsTestingKey] = useState(false);
+  const [keyTestResult, setKeyTestResult] = useState<{ valid: boolean; message: string } | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('mara_theme') as 'dark' | 'light') || 'dark';
   });
+
+  useEffect(() => {
+    if (isApiKeyModalOpen) {
+      setApiKeyInput(userApiKey);
+      setKeyTestResult(null);
+    }
+  }, [isApiKeyModalOpen, userApiKey]);
 
   useEffect(() => {
     document.documentElement.className = theme;
@@ -379,6 +393,16 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               ) : (
                 <Moon className="w-4 h-4 text-indigo-500 group-hover:-rotate-12 transition-transform duration-300" />
               )}
+            </button>
+            <button 
+              onClick={() => setIsApiKeyModalOpen(true)}
+              className={`text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border cursor-pointer ${
+                userApiKey ? 'border-primary/30 bg-primary/10 text-primary font-bold' : 'border-white/5 hover:bg-surface-variant/30 font-semibold'
+              }`}
+              title="Configure OpenAI API Key"
+            >
+              <Key className="w-4 h-4" />
+              <span className="text-xs">API Key</span>
             </button>
             <button 
               onClick={onToggleTrace}
@@ -991,15 +1015,164 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               </select>
             </div>
 
-            {/* API Key settings (Minimal / Non-working) */}
+            {/* OpenAI API Key Settings Card */}
             <div>
-              <label className="block text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-widest mb-2.5">Custom API Keys</label>
-              <input 
-                type="password" 
-                disabled 
-                placeholder="sk-proj-••••••••••••••••" 
-                className="w-full bg-surface-container/40 border border-white/5 text-on-surface-variant rounded-xl p-3 text-xs font-code-md focus:outline-none opacity-80 cursor-not-allowed"
-              />
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-widest">OpenAI API Key</label>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                  userApiKey ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-surface-variant/60 text-on-surface-variant'
+                }`}>
+                  {userApiKey ? 'Custom Key Active' : 'Using Server Default'}
+                </span>
+              </div>
+              <p className="text-xs text-on-surface-variant/80 mb-3">
+                Store your OpenAI API Key locally in this browser so you don't need to configure .env files.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsProfileOpen(false);
+                  setIsApiKeyModalOpen(true);
+                }}
+                className="w-full py-2.5 px-3 rounded-xl bg-surface-variant/40 hover:bg-surface-variant/70 text-on-surface font-medium text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border border-white/5 active:scale-[0.99]"
+              >
+                <Key className="w-3.5 h-3.5 text-primary" />
+                <span>{userApiKey ? 'Manage Custom API Key' : 'Configure Personal API Key'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* OpenAI API Key Modal */}
+      {isApiKeyModalOpen && (
+        <div 
+          onClick={() => setIsApiKeyModalOpen(false)}
+          className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-end sm:items-center justify-center z-[100] p-0 sm:p-6 animate-fadeIn"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-surface-container-low border border-white/10 w-full max-w-md rounded-t-[32px] sm:rounded-[32px] overflow-hidden shadow-2xl flex flex-col p-5 sm:p-6 text-on-surface animate-modalSlideUp sm:animate-modalScaleIn"
+          >
+            {/* Header */}
+            <div className="flex justify-between items-center pb-4 border-b border-white/5 mb-6">
+              <h3 className="text-lg font-bold text-primary flex items-center gap-2">
+                <Key className="w-5 h-5 text-primary" />
+                <span>OpenAI API Key Settings</span>
+              </h3>
+              <button 
+                onClick={() => setIsApiKeyModalOpen(false)}
+                className="p-1.5 hover:bg-surface-variant/40 rounded-full text-on-surface-variant hover:text-on-surface transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-on-surface-variant leading-relaxed mb-5">
+              Your API key is saved securely in your browser&apos;s <strong className="text-on-surface">Local Storage</strong> and is sent directly with your requests so you don&apos;t need an <code className="bg-surface-variant/60 px-1 py-0.5 rounded text-primary font-mono">OPENAI_API_KEY</code> environment variable.
+            </p>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">
+                  OpenAI API Key
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type={showApiKey ? "text" : "password"}
+                    value={apiKeyInput}
+                    onChange={(e) => {
+                      setApiKeyInput(e.target.value);
+                      setKeyTestResult(null);
+                    }}
+                    placeholder="sk-proj-..."
+                    className="w-full bg-surface-container px-4 py-3 pr-11 rounded-xl border border-white/10 focus:border-primary/50 focus:outline-none text-sm font-mono text-on-surface placeholder:text-on-surface-variant/40 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="absolute right-3 text-on-surface-variant hover:text-on-surface p-1 rounded-md transition-colors cursor-pointer"
+                    title={showApiKey ? "Hide key" : "Show key"}
+                  >
+                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {keyTestResult && (
+                <div className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
+                  keyTestResult.valid 
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                    : 'bg-red-500/10 border-red-500/30 text-red-400'
+                }`}>
+                  {keyTestResult.valid ? <Check className="w-4 h-4 flex-shrink-0" /> : <AlertTriangle className="w-4 h-4 flex-shrink-0" />}
+                  <span>{keyTestResult.message}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2.5">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={isTestingKey || !apiKeyInput.trim()}
+                  onClick={async () => {
+                    setIsTestingKey(true);
+                    setKeyTestResult(null);
+                    try {
+                      const res = await fetch('http://localhost:8000/api/settings/verify-key', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ openai_api_key: apiKeyInput.trim() })
+                      });
+                      const data = await res.json();
+                      setKeyTestResult(data);
+                    } catch (e) {
+                      setKeyTestResult({ valid: false, message: 'Could not connect to backend to verify key.' });
+                    } finally {
+                      setIsTestingKey(false);
+                    }
+                  }}
+                  className="flex-1 py-3 px-4 rounded-xl bg-surface-variant/40 hover:bg-surface-variant/70 disabled:opacity-50 disabled:cursor-not-allowed text-on-surface font-semibold text-sm transition-all flex items-center justify-center gap-2 border border-white/5 cursor-pointer"
+                >
+                  {isTestingKey ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-amber-400" />}
+                  <span>{isTestingKey ? 'Testing...' : 'Test Key'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const cleanKey = apiKeyInput.trim();
+                    if (cleanKey) {
+                      localStorage.setItem('mara_openai_api_key', cleanKey);
+                      setUserApiKey(cleanKey);
+                      setIsApiKeyModalOpen(false);
+                    }
+                  }}
+                  disabled={!apiKeyInput.trim()}
+                  className="flex-1 py-3 px-4 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-on-primary font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-primary/20"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Save Key</span>
+                </button>
+              </div>
+
+              {userApiKey && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.removeItem('mara_openai_api_key');
+                    setUserApiKey('');
+                    setApiKeyInput('');
+                    setKeyTestResult(null);
+                    setIsApiKeyModalOpen(false);
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 font-semibold text-xs transition-all flex items-center justify-center gap-2 border border-red-500/20 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Remove Stored Key (Use Server Default)</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
