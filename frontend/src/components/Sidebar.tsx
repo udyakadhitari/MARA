@@ -98,16 +98,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       />
 
       <nav 
-        className={`bg-surface-dim/95 backdrop-blur-xl h-screen fixed left-0 top-0 border-r border-white/5 flex flex-col z-50 sidebar-drawer-slide ${
+        className={`bg-surface-dim/95 backdrop-blur-xl h-screen fixed left-0 top-0 border-r border-white/5 flex flex-col z-50 transition-transform duration-500 ease-in-out will-change-transform ${
           isResizing ? 'select-none' : ''
         } ${
           isMobileView
-            ? (isMobileOpen ? 'translate-x-0 w-[280px] max-w-[85vw] p-4 shadow-[0_0_50px_rgba(0,0,0,0.5)]' : '-translate-x-full pointer-events-none')
+            ? `w-[280px] max-w-[85vw] p-4 shadow-[0_0_50px_rgba(0,0,0,0.5)] ${
+                isMobileOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full pointer-events-none'
+              }`
             : 'translate-x-0 pointer-events-auto'
         }`}
         style={{ 
           width: !isMobileView ? (isCollapsed ? 72 : sidebarWidth) : undefined, 
-          padding: !isMobileView ? (isCollapsed ? '8px' : '16px') : '16px' 
+          padding: !isMobileView ? (isCollapsed ? '8px' : '16px') : undefined 
         }}
       >
         {/* Drag Resize Handle (only active on desktop when expanded) */}
